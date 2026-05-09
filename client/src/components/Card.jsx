@@ -15,7 +15,8 @@ function CardBack({ small, medium, onClick }) {
     onMouseEnter={e => { if(onClick) e.currentTarget.style.transform='translateY(-3px)'; }}
     onMouseLeave={e => { e.currentTarget.style.transform='none'; }}>
       <img src="/cardback.jpg" alt="card back"
-        style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+        draggable={false}
+        style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', pointerEvents:'none' }} />
     </div>
   );
 }
@@ -39,7 +40,8 @@ export default function Card({ card, selected, onClick, small, medium }) {
       overflow:'hidden', flexShrink:0,
     }}>
       <img src="/cards/X1.png" alt="Joker"
-        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }} />
+        draggable={false}
+        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', pointerEvents:'none' }} />
     </div>
   );
 
@@ -60,7 +62,8 @@ export default function Card({ card, selected, onClick, small, medium }) {
       <img
         src={imgUrl}
         alt={`${card.rank} of ${card.suit}`}
-        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block' }}
+        draggable={false}
+        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', pointerEvents:'none' }}
       />
     </div>
   );

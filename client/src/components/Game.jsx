@@ -4,6 +4,20 @@ import { useState, useEffect } from 'react';
 import socket from '../socket';
 import Card from './Card';
 
+function playSound(type) {
+  const files = {
+    card:    '/sounds/card.wav',
+    meld:    '/sounds/win.wav',
+    discard: '/sounds/card.wav',
+    stop:    '/sounds/stop.wav',
+    win:     '/sounds/win.wav',
+    error:   '/sounds/error.mp3',
+  };
+  const audio = new Audio(files[type]);
+  audio.volume = type === 'win' ? 0.5 : 0.3;
+  audio.play().catch(() => {});
+}
+
 export default function Game({ roomInfo }) {
   const [gameState, setGameState] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
@@ -64,6 +78,14 @@ export default function Game({ roomInfo }) {
       socket.off('stopTimeout');
     };
   }, []);
+
+  useEffect(() => {
+    const bg = new Audio('/sounds/background.mp3');
+    bg.loop = true;
+    bg.volume = 0.1;
+    bg.play().catch(() => {});
+    return () => { bg.pause(); bg.currentTime = 0; };
+  }, []);
    
   useEffect(() => {
     if (!stopMode) return;
@@ -78,6 +100,7 @@ export default function Game({ roomInfo }) {
 
   useEffect(() => {
     if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
+        playSound('win');
       const winner = gameState.players.find(p => p.id === gameState.winner);
       if (winner?.id === roomInfo.playerId) {
         // YOU won — big celebration!
@@ -117,8 +140,16 @@ export default function Game({ roomInfo }) {
   function msg(text) { setMessage(text); setTimeout(() => setMessage(''), 3000); }
 
   function emit(event, data = {}) {
+    if (event === 'discardCard') playSound('discard');
     socket.emit(event, data, (res) => {
-      if (res?.error) msg(res.error);
+      if (res?.error) {
+        playSound('error');
+        msg(res.error);
+      } else if (event === 'drawFromPile' || event === 'drawFromDiscard' || event === 'firstDraw') {
+        playSound('card');
+      } else if (event === 'playMeld' || event === 'extendMeld') {
+        playSound('meld');
+      }
     });
   }
 
@@ -130,6 +161,7 @@ export default function Game({ roomInfo }) {
 
   // ── STOP MODE ─────────────────────────────────────────────────────────────
   function enterStopMode() {
+    playSound('stop');
     if (!topDiscard) return msg('No discard card available');
     if (me.stopBanned) return msg('You cannot use STOP this round');
     const claimedCard = topDiscard;
