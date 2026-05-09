@@ -9,6 +9,7 @@ function CardBack({ small, medium, onClick }) {
       width:w, height:h, borderRadius:8, flexShrink:0,
       cursor: onClick ? 'pointer' : 'default',
       overflow:'hidden',
+      WebkitTouchCallout:'none', WebkitUserSelect:'none',
       boxShadow:'0 3px 10px rgba(0,0,0,0.4)',
       transition:'transform 0.15s',
     }}
@@ -38,6 +39,7 @@ export default function Card({ card, selected, onClick, small, medium }) {
       transition:'all 0.15s',
       boxShadow: selected ? '0 8px 22px rgba(244,165,34,0.55)' : '0 3px 10px rgba(0,0,0,0.2)',
       overflow:'hidden', flexShrink:0,
+      WebkitTouchCallout:'none', WebkitUserSelect:'none',
     }}>
       <img src="/cards/X1.png" alt="Joker"
         draggable={false}
@@ -58,6 +60,7 @@ export default function Card({ card, selected, onClick, small, medium }) {
       transition:'all 0.15s',
       boxShadow: selected ? '0 8px 22px rgba(244,165,34,0.55)' : '0 3px 10px rgba(0,0,0,0.2)',
       overflow:'hidden', flexShrink:0,
+      WebkitTouchCallout:'none', WebkitUserSelect:'none',
     }}>
       <img
         src={imgUrl}
