@@ -336,16 +336,24 @@ function sortMeldCards(cards, type) {
     const isGameOver = gameState.status === 'gameOver';
     const winner = gameState.players.find(p => p.id === gameState.winner);
     return (
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center',
+      <motion.div
+        initial={{ opacity:0 }}
+        animate={{ opacity:1 }}
+        transition={{ duration:0.5 }}
+        style={{ display:'flex', flexDirection:'column', alignItems:'center',
         justifyContent:'center', minHeight:'100vh', gap:24, padding:24,
         background:'radial-gradient(ellipse at 50% 30%, #1e6b42 0%, #0d3b22 100%)' }}>
-        <div style={{ textAlign:'center' }}>
+        <motion.div
+          initial={{ scale:0, rotate:-10 }}
+          animate={{ scale:1, rotate:0 }}
+          transition={{ delay:0.2, duration:0.5, ease:'backOut' }}
+          style={{ textAlign:'center' }}>
           <div style={{ fontSize:64, marginBottom:8 }}>{isGameOver ? '🏆' : '🎉'}</div>
           <h1 style={{ fontFamily:"'Fredoka One',cursive", fontSize:42, marginBottom:4 }}>
             {isGameOver ? 'Game Over!' : 'Round Over!'}
           </h1>
           {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>🎴 {winner.name} wins!</p>}
-        </div>
+        </motion.div>
 
         <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
           width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.1)' }}>
@@ -355,7 +363,11 @@ function sortMeldCards(cards, type) {
           {[...gameState.players]
             .sort((a, b) => a.totalScore - b.totalScore)
             .map((p, rank) => (
-            <div key={p.id} style={{
+            <motion.div key={p.id}
+              initial={{ opacity:0, x:-30 }}
+              animate={{ opacity:1, x:0 }}
+              transition={{ delay: 0.3 + rank * 0.1, duration:0.3 }}
+              style={{
               display:'flex', justifyContent:'space-between', alignItems:'center',
               padding:'10px 14px', marginBottom:8, borderRadius:12,
               background: rank === 0 ? 'rgba(244,165,34,0.15)' : 'rgba(255,255,255,0.05)',
@@ -373,17 +385,23 @@ function sortMeldCards(cards, type) {
                 color: rank === 0 ? '#f4a522' : '#fff' }}>
                 {p.totalScore} pts
               </span>
-            </div>
+            </motion.div>
           ))}
         </div>
 
         {!isGameOver && (
-          <button className="btn-primary" style={{ fontSize:18, padding:'14px 36px' }}
+          <motion.button className="btn-primary"
+            initial={{ opacity:0, y:20 }}
+            animate={{ opacity:1, y:0 }}
+            transition={{ delay:0.6, duration:0.4, ease:'backOut' }}
+            whileHover={{ scale:1.05 }}
+            whileTap={{ scale:0.95 }}
+            style={{ fontSize:18, padding:'14px 36px' }}
             onClick={() => emit('startNextRound')}>
             Next Round →
-          </button>
+          </motion.button>
         )}
-      </div>
+      </motion.div>
     );
   }
 
@@ -558,11 +576,13 @@ function sortMeldCards(cards, type) {
                 return (
                   <div style={{ position:'relative', height:52, width:totalW, marginTop:4 }}>
                     {(p.hand || []).map((c, i) => (
-                      <div key={c.id ?? i} style={{
-                        position:'absolute', left: i * offset, top:0, zIndex:i,
-                      }}>
+                      <motion.div key={c.id ?? i}
+                      initial={{ opacity:0, x:-10 }}
+                      animate={{ opacity:1, x:0 }}
+                      transition={{ duration:0.25, delay: i * 0.04 }}
+                      style={{ position:'absolute', left: i * offset, top:0, zIndex:i }}>
                         <Card card={c} small />
-                      </div>
+                      </motion.div>
                     ))}
                     <div style={{
                       position:'absolute', top:-6, right:-10, zIndex:50,
@@ -608,7 +628,11 @@ function sortMeldCards(cards, type) {
                 </p>
                 <div style={{ display:'flex', gap:3, alignItems:'center' }}>
                   {sortMeldCards(meld.cards, meld.type).map(c => (
-                    <div key={c.id} onClick={() => {
+                    <motion.div key={c.id}
+                     initial={{ opacity:0, scale:0.5, y:-20 }}
+                     animate={{ opacity:1, scale:1, y:0 }}
+                     transition={{ duration:0.3, ease:'backOut' }}
+                     onClick={() => {
                       if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
                       if (c.isJoker && selectedCards.length === 1) {
                         emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
@@ -617,7 +641,7 @@ function sortMeldCards(cards, type) {
                       }
                     }}>
                       <Card card={c} medium />
-                    </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
