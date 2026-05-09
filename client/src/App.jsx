@@ -16,7 +16,7 @@ export default function App() {
     <div style={{
       minHeight:'100vh', display:'flex', flexDirection:'column',
       alignItems:'center', justifyContent:'center',
-      background:'radial-gradient(ellipse at 50% 30%, #1e6b42 0%, #0d3b22 100%)',
+      background:'radial-gradient(ellipse at 50% 30%, #cea475 0%, #644122 100%)',
       padding:24, gap:24,
     }}>
       <img src="/pontinho.jpg" alt="Pontinho with Family"

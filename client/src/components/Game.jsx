@@ -406,7 +406,7 @@ function sortMeldCards(cards, type) {
                     <div key={c.id} title="Click to remove"
                       onClick={e => { e.stopPropagation(); removeFromStopMeld(c); }}
                       style={{ cursor:'pointer', opacity:0.9 }}>
-                      <Card card={c} />
+                      <Card card={c} medium />
                     </div>
                   ))}
                   {meld.length === 0 && <p style={{ opacity:0.3, fontSize:12 }}>Click here to activate, then pick cards</p>}
@@ -463,12 +463,12 @@ function sortMeldCards(cards, type) {
   // ── MAIN GAME SCREEN ──────────────────────────────────────────────────────
   // ── MAIN GAME SCREEN ──────────────────────────────────────────────────────
   return (
-    <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'hidden' }}>
+    <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'visible' }}>
 
       {/* ── HEADER ── */}
       <div style={{
         display:'flex', justifyContent:'space-between', alignItems:'center',
-        background:'rgba(0,0,0,0.45)', backdropFilter:'blur(8px)',
+        background:'rgba(13,59,34,0.97)', backdropFilter:'blur(8px)',
         padding:'10px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)',
         flexShrink:0, zIndex:10,
       }}>
@@ -500,7 +500,7 @@ function sortMeldCards(cards, type) {
       <div style={{
         display:'flex', gap:8, padding:'10px 16px',
         justifyContent:'center', flexWrap:'wrap',
-        background:'rgba(0,0,0,0.2)', flexShrink:0,
+        background:'rgba(13,59,34,0.97)', flexShrink:0,
       }}>
         {others.map(p => {
           const isActive = currentPlayer?.id === p.id;
@@ -560,7 +560,7 @@ function sortMeldCards(cards, type) {
 
       {/* ── TABLE SURFACE ── */}
       <div style={{
-        flex:1, display:'flex', flexDirection:'column', overflow:'hidden',
+        flex:1, display:'flex', flexDirection:'column', overflow:'visible',
         background:'radial-gradient(ellipse at 55% 45%, #1e6b42 0%, #124d2e 100%)',
         position:'relative',
       }}>
@@ -568,8 +568,7 @@ function sortMeldCards(cards, type) {
         {/* Melds — horizontal scroll */}
         {gameState.melds.length > 0 && (
           <div style={{
-            display:'flex', gap:8, padding:'10px 16px',
-            overflowX:'auto', overflowY:'hidden',
+            display:'flex', flexWrap:'wrap', gap:8, padding:'10px 16px',
             flexShrink:0,
             borderBottom:'1px solid rgba(255,255,255,0.06)',
           }}>
@@ -586,30 +585,15 @@ function sortMeldCards(cards, type) {
                   {sortMeldCards(meld.cards, meld.type).map(c => (
                     <div key={c.id} onClick={() => {
                       if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
-                      emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
+                      if (c.isJoker && selectedCards.length === 1) {
+                        emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
+                      } else {
+                        emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
+                      }
                     }}>
-                      <Card card={c} />
+                      <Card card={c} medium />
                     </div>
                   ))}
-                  {isMyTurn && phase === 'play' && selectedCards.length > 0 && (
-                    <div style={{ display:'flex', flexDirection:'column', gap:3, marginLeft:2 }}>
-                      <div style={{
-                        width:44, height:60, border:'2px dashed rgba(255,255,255,0.3)',
-                        borderRadius:6, display:'flex', alignItems:'center',
-                        justifyContent:'center', cursor:'pointer', fontSize:18,
-                        color:'rgba(255,255,255,0.5)',
-                      }} onClick={() => emit('extendMeld', { meldId: meld.id, cardIds: selectedCards })}>+</div>
-                      {meld.type==='run' && meld.cards.some(c=>c.isJoker) && selectedCards.length===1 && (
-                        <div style={{
-                          background:'#f4a522', color:'#1a1a1a', borderRadius:6,
-                          padding:'3px 2px', fontSize:10, fontWeight:800,
-                          textAlign:'center', cursor:'pointer', width:34,
-                        }} onClick={() => emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] })}>
-                          STEAL
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               </div>
             ))}
@@ -624,7 +608,7 @@ function sortMeldCards(cards, type) {
           {/* Draw + Discard */}
           <div style={{ display:'flex', gap:40, alignItems:'flex-end' }}>
             <div style={{ textAlign:'center' }}>
-              <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:8 }}>
+              <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:16 }}>
                 DRAW ({gameState.drawPile.length})
               </p>
               <div style={{
@@ -644,7 +628,7 @@ function sortMeldCards(cards, type) {
             </div>
 
             <div style={{ textAlign:'center' }}>
-              <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:8 }}>
+              <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:16 }}>
                 DISCARD
               </p>
               <div style={{
@@ -654,7 +638,14 @@ function sortMeldCards(cards, type) {
               }}
               onMouseEnter={e => { if(isMyTurn&&phase==='draw') e.currentTarget.style.transform='scale(1.4)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform='scale(1.15)'; }}
-              onClick={() => { if (!isMyTurn || phase !== 'draw') return; emit('drawFromDiscard'); }}>
+              onClick={() => {
+                if (!isMyTurn) return;
+                if (phase === 'draw') emit('drawFromDiscard');
+                else if (phase === 'play' && selectedCards.length === 1) {
+                  const card = me?.hand?.find(c => c.id === selectedCards[0]);
+                  if (!card?.isJoker) emit('discardCard', { cardId: selectedCards[0] });
+                }
+              }}>
                 {topDiscard
                   ? <Card card={topDiscard} />
                   : <div style={{ width:70, height:100, border:'2px dashed rgba(255,255,255,0.2)', borderRadius:8 }} />
@@ -663,29 +654,40 @@ function sortMeldCards(cards, type) {
             </div>
           </div>
 
-          {/* Action buttons */}
-          <div style={{ display:'flex', gap:10, flexWrap:'wrap', justifyContent:'center' }}>
+          {/* Action area */}
+          <div style={{ display:'flex', flexDirection:'column', gap:10, alignItems:'center' }}>
             {isMyTurn && <>
               {phase==='firstDraw' && (
-                <p style={{ opacity:0.65, fontStyle:'italic', fontSize:14 }}>
-                  👆 Click the draw pile
-                </p>
+                <p style={{ opacity:0.65, fontStyle:'italic', fontSize:14 }}>👆 Click the draw pile</p>
               )}
-              {phase==='firstKeepOrDiscard' && <>
-                <button className="btn-success" onClick={() => emit('firstKeepOrDiscard', { keep:true })}>✅ Keep</button>
-                <button className="btn-danger" onClick={() => emit('firstKeepOrDiscard', { keep:false })}>🗑 Discard & redraw</button>
-              </>}
+              {phase==='firstKeepOrDiscard' && (
+                <div style={{ display:'flex', gap:10 }}>
+                  <button className="btn-success" onClick={() => emit('firstKeepOrDiscard', { keep:true })}>✅ Keep</button>
+                  <button className="btn-danger" onClick={() => emit('firstKeepOrDiscard', { keep:false })}>🗑 Discard & redraw</button>
+                </div>
+              )}
               {phase==='play' && <>
-                {selectedCards.length >= 3 && (
-                  <button className="btn-primary" onClick={() => emit('playMeld', { cardIds:selectedCards })}>
-                    Play meld ({selectedCards.length} cards)
-                  </button>
+                {selectedCards.length === 0 && (
+                  <p style={{ opacity:0.5, fontStyle:'italic', fontSize:13 }}>
+                    Select cards to play a meld · Click discard pile to discard
+                  </p>
                 )}
-                {selectedCards.length === 1 &&
-                 !me?.hand?.find(c => c.id===selectedCards[0])?.isJoker && (
-                  <button className="btn-danger" onClick={() => emit('discardCard', { cardId:selectedCards[0] })}>
-                    Discard
-                  </button>
+                {selectedCards.length === 1 && !me?.hand?.find(c => c.id===selectedCards[0])?.isJoker && (
+                  <p style={{ opacity:0.6, fontSize:13 }}>👆 Click the discard pile to discard</p>
+                )}
+                {selectedCards.length >= 3 && (
+                  <div onClick={() => emit('playMeld', { cardIds:selectedCards })}
+                    style={{
+                      border:'2px dashed rgba(255,255,255,0.5)', borderRadius:12,
+                      padding:'12px 32px', cursor:'pointer',
+                      background:'rgba(255,255,255,0.07)',
+                      fontSize:14, color:'rgba(255,255,255,0.85)',
+                      transition:'all 0.2s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}
+                    onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
+                    ▶ Play {selectedCards.length} cards as meld
+                  </div>
                 )}
               </>}
             </>}
@@ -698,8 +700,9 @@ function sortMeldCards(cards, type) {
 
       {/* ── HAND ── */}
       <div style={{
-        background:'rgba(0,0,0,0.4)', borderTop:'2px solid rgba(255,255,255,0.07)',
-        padding:'12px 16px', flexShrink:0,
+        background:'rgba(13,59,34,0.97)', borderTop:'2px solid rgba(255,255,255,0.07)',
+        padding:'12px 16px 12px 16px', paddingTop:28, flexShrink:0,
+        overflow:'visible',
       }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
@@ -723,15 +726,26 @@ function sortMeldCards(cards, type) {
             {me?.totalScore ?? 0} pts
           </span>
         </div>
-        <div style={{ display:'flex', gap:8, overflowX:'auto', paddingBottom:4 }}>
+        <div style={{ overflowX:'auto', paddingBottom:4 }}>
+          <div style={{ display:'flex', gap:8, paddingTop:20 }}>
           {handOrder
             .map(id => me?.hand?.find(c => c.id===id))
             .filter(Boolean)
             .map(card => (
               <div key={card.id} draggable
+                data-cardid={card.id}
                 onDragStart={() => setDraggedId(card.id)}
                 onDragOver={e => onDragOver(e, card.id)}
                 onDragEnd={() => setDraggedId(null)}
+                onTouchStart={() => setDraggedId(card.id)}
+                onTouchMove={e => {
+                  e.preventDefault();
+                  const touch = e.touches[0];
+                  const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                  const targetId = el?.closest('[data-cardid]')?.dataset.cardid;
+                  if (targetId && targetId !== draggedId) onDragOver({ preventDefault:()=>{} }, targetId);
+                }}
+                onTouchEnd={() => setDraggedId(null)}
                 style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab', transition:'opacity 0.15s' }}>
                 <Card card={card}
                   selected={selectedCards.includes(card.id)}
@@ -740,6 +754,7 @@ function sortMeldCards(cards, type) {
             ))
           }
         </div>
+      </div>
       </div>
 
       {/* Toast message */}

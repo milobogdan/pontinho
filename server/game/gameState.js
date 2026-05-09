@@ -176,7 +176,11 @@ export function drawFromDiscard(game, playerId) {
   const card = game.discardPile.at(-1);
   const player = getCurrentPlayer(game);
 
-  if (!canUseDiscardCard(card, player.hand, game.melds)) {
+  const wouldWinWithSet = !card.isJoker &&
+    player.hand.filter(c => !c.isJoker && c.rank === card.rank && c.suit !== card.suit).length >= 2 &&
+    new Set(player.hand.filter(c => !c.isJoker && c.rank === card.rank && c.suit !== card.suit).map(c => c.suit)).size >= 2;
+
+  if (!canUseDiscardCard(card, player.hand, game.melds) && !wouldWinWithSet) {
     return { error: `You can only pick from discard if you can use ${card.rank} in a run` };
   }
 
@@ -237,7 +241,6 @@ export function extendMeld(game, playerId, meldId, cardIds) {
   const cards = cardIds.map(id => player.hand.find(c => c.id === id)).filter(Boolean);
   if (cards.length !== cardIds.length) return { error: 'Some cards not found in your hand' };
 
-  // Discard card can only extend a run
   if (game.pickedFromDiscard) {
     const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
     if (usesDiscardCard && meld.type === 'set') {
@@ -245,7 +248,15 @@ export function extendMeld(game, playerId, meldId, cardIds) {
     }
   }
 
-  if (!isValidExtension(meld.cards, cards)) return { error: 'Invalid extension' };
+  // Check if this would empty the hand (winning move) — allow joker at end
+  const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
+  const isWinningMove = remainingAfter.length <= 1;
+  const combined = [...meld.cards, ...cards];
+  const valid = isWinningMove
+    ? (isValidExtension(meld.cards, cards) || isValidWinningRun(combined))
+    : isValidExtension(meld.cards, cards);
+
+  if (!valid) return { error: 'Invalid extension' };
 
   player.hand = player.hand.filter(c => !cardIds.includes(c.id));
   meld.cards = [...meld.cards, ...cards];

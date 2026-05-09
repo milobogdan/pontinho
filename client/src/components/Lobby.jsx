@@ -104,14 +104,6 @@ export default function Lobby({ onGameStart }) {
               <button className="btn-secondary" style={{ flex: 1, padding: '8px 4px', fontSize: 13 }} onClick={() => addBot('hard')}>🔴 Hard Bot</button>
             </div>
 
-            <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14 }}>
-              <input type="checkbox" checked={debugMode} onChange={e => {
-                setDebugMode(e.target.checked);
-                socket.emit('setDebugMode', { enabled: e.target.checked });
-              }} />
-              Debug mode (see all bot hands)
-            </label>
-
             <button className="btn-success" onClick={startGame} disabled={currentRoom.players.length < 2}>
               Start Game
             </button>

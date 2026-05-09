@@ -171,36 +171,43 @@ function canReplaceJoker(meldCards, replacementCard) {
 
 // Special rule: when going out, Joker can be at start or end of a run
 // but the run cannot also contain a Jack
-function isValidWinningRun(cards) {
+export function isValidWinningRun(cards) {
+  if (cards.length < 3) return false;
+
   const jokers = cards.filter(c => c.isJoker);
   const nonJokers = cards.filter(c => !c.isJoker);
 
+  // Still max 1 joker per run
+  if (jokers.length > 1) return false;
+
+  // No joker — same as regular run
   if (jokers.length === 0) return isValidRun(cards);
-  if (jokers.length > 1 || cards.length < 3) return false;
 
-  // No Jack allowed alongside a Joker
-  if (nonJokers.some(c => c.rank === 'J')) return false;
+  // All non-jokers must be same suit
+  const suit = nonJokers[0].suit;
+  if (!nonJokers.every(c => c.suit === suit)) return false;
 
-  const suits = new Set(nonJokers.map(c => c.suit));
-  if (suits.size !== 1) return false;
+  // No duplicate values
+  const values = nonJokers.map(c => c.value);
+  if (new Set(values).size !== values.length) return false;
 
-  const trySequence = (getVal) => {
-    const values = [...nonJokers].sort((a, b) => getVal(a) - getVal(b)).map(getVal);
-    // All consecutive → joker goes at start or end (valid winning move)
-    let gapCount = 0;
-    for (let i = 1; i < values.length; i++) {
-      const diff = values[i] - values[i - 1];
-      if (diff === 1) continue;
-      if (diff === 2) { gapCount++; continue; }
-      return false;
-    }
-    return gapCount <= 1; // 0 gaps = joker at end/start, 1 gap = joker in middle
-  };
+  // Sort non-jokers by value
+  const sorted = [...nonJokers].sort((a, b) => a.value - b.value);
 
-  return trySequence(c => c.rank === 'A' ? 1 : c.value)
-      || trySequence(c => c.rank === 'A' ? 14 : c.value);
+  // Check gaps — joker fills 1 gap OR sits at start/end
+  let gaps = 0;
+  for (let i = 1; i < sorted.length; i++) {
+    const diff = sorted[i].value - sorted[i - 1].value;
+    if (diff === 1) continue;       // consecutive, no gap
+    if (diff === 2) { gaps++; continue; } // joker fills this gap
+    return false;                   // gap too large for 1 joker
+  }
+
+  // gaps=0 means joker at start or end (both valid when winning)
+  // gaps=1 means joker in middle (always valid)
+  return gaps <= 1;
 }
 
 export { isValidRun, isValidSet, isValidMeld, isValidExtension,
          calculateHandScore, canFormRunWith, canUseDiscardCard,
-         canReplaceJoker, isValidWinningRun };
+         canReplaceJoker };
