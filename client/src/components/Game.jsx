@@ -1,3 +1,5 @@
+import confetti from 'canvas-confetti';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import socket from '../socket';
 import Card from './Card';
@@ -73,6 +75,29 @@ export default function Game({ roomInfo }) {
     }, 1000);
     return () => clearInterval(interval);
   }, [stopMode]);
+
+  useEffect(() => {
+    if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
+      const winner = gameState.players.find(p => p.id === gameState.winner);
+      if (winner?.id === roomInfo.playerId) {
+        // YOU won — big celebration!
+        confetti({
+          particleCount: 200,
+          spread: 80,
+          origin: { y: 0.6 },
+          colors: ['#f4a522', '#e63946', '#2d8a54', '#fff'],
+        });
+      } else {
+        // Someone else won — small confetti
+        confetti({
+          particleCount: 60,
+          spread: 50,
+          origin: { y: 0.6 },
+          colors: ['#f4a522', '#fff'],
+        });
+      }
+    }
+  }, [gameState?.status]);
 
   if (!gameState) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}>
@@ -692,7 +717,16 @@ function sortMeldCards(cards, type) {
               </>}
             </>}
             {!isMyTurn && !me?.stopBanned && topDiscard && (
-              <button className="btn-stop" onClick={enterStopMode}>🛑 STOP!</button>
+              <motion.button className="btn-stop" onClick={enterStopMode}
+                animate={{ scale:[1, 1.06, 1], boxShadow:[
+                  '0 0 0px rgba(230,57,70,0)',
+                  '0 0 20px rgba(230,57,70,0.8)',
+                  '0 0 0px rgba(230,57,70,0)',
+                ]}}
+                transition={{ duration:1.5, repeat:Infinity, ease:'easeInOut' }}
+                whileTap={{ scale:0.92 }}>
+                🛑 STOP!
+              </motion.button>
             )}
           </div>
         </div>
@@ -732,7 +766,7 @@ function sortMeldCards(cards, type) {
             .map(id => me?.hand?.find(c => c.id===id))
             .filter(Boolean)
             .map(card => (
-              <div key={card.id} draggable
+              <motion.div key={card.id} draggable
                 data-cardid={card.id}
                 onDragStart={() => setDraggedId(card.id)}
                 onDragOver={e => onDragOver(e, card.id)}
@@ -746,11 +780,14 @@ function sortMeldCards(cards, type) {
                   if (targetId && targetId !== draggedId) onDragOver({ preventDefault:()=>{} }, targetId);
                 }}
                 onTouchEnd={() => setDraggedId(null)}
-                style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab', transition:'opacity 0.15s' }}>
+                initial={{ opacity:0, y:60, rotate: -5 }}
+                animate={{ opacity:1, y:0, rotate:0 }}
+                transition={{ duration:0.35, ease:'backOut' }}
+                style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab' }}>
                 <Card card={card}
                   selected={selectedCards.includes(card.id)}
                   onClick={() => toggleCard(card.id)} />
-              </div>
+              </motion.div>
             ))
           }
         </div>
