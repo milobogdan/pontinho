@@ -847,7 +847,7 @@ function sortMeldCards(cards, type) {
           </span>
         </div>
         {(() => {
-          const isMobile = window.innerWidth < 600;
+          const isMobile = 'ontouchstart' in window || window.innerWidth < 600;
           const orderedHand = handOrder.map(id => me?.hand?.find(c => c.id===id)).filter(Boolean);
           const cardW = isMobile ? 62 : 84;
           const cardH = isMobile ? 90 : 120;
@@ -856,7 +856,7 @@ function sortMeldCards(cards, type) {
           const offset = count <= 1 ? cardW + 8 : Math.min(cardW + 8, (availableW - cardW) / (count - 1));
 
           if (isMobile) return (
-            <div style={{ position:'relative', height: cardH + 30, marginTop:8 }}>
+            <div style={{ position:'relative', height: cardH + 30, marginTop:8, marginLeft:'auto', marginRight:'auto', width: Math.min(window.innerWidth - 48, cardW + offset * (count - 1)) }}>
               {orderedHand.map((card, i) => {
                 const isSelected = selectedCards.includes(card.id);
                 const isNew = newCardId === card.id;
@@ -917,8 +917,8 @@ function sortMeldCards(cards, type) {
 
           // Desktop layout — horizontal scroll
           return (
-            <div ref={handContainerRef} style={{ overflowX:'auto', paddingBottom:4 }}>
-              <div style={{ display:'flex', gap:8, paddingTop:20 }}>
+            <div ref={handContainerRef} style={{ overflowX:'auto', overflowY:'hidden', paddingBottom:4 }}>
+              <div style={{ display:'flex', gap:8, paddingTop:20, justifyContent:'center', flexWrap:'wrap' }}>
                 {orderedHand.map(card => (
                   <motion.div key={card.id} draggable
                     data-cardid={card.id}
