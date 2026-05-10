@@ -846,70 +846,102 @@ function sortMeldCards(cards, type) {
             {me?.totalScore ?? 0} pts
           </span>
         </div>
-        <div ref={handContainerRef} style={{ overflowX:'auto', paddingBottom:4 }}>
-          <div style={{ display:'flex', gap:8, paddingTop:20 }}>
-          {handOrder
-            .map(id => me?.hand?.find(c => c.id===id))
-            .filter(Boolean)
-            .map(card => (
-              <motion.div key={card.id} draggable
-                data-cardid={card.id}
-                onDragStart={() => setDraggedId(card.id)}
-                onDragOver={e => onDragOver(e, card.id)}
-                onDragEnd={() => setDraggedId(null)}
-                onTouchStart={e => {
-                  touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-                  isDraggingRef.current = false;
-                  setDraggedId(card.id);
-                  if (handContainerRef.current) handContainerRef.current.style.overflowX = 'hidden';
-                }}
-                onTouchMove={e => {
-                  if (!touchStartRef.current) return;
-                  const touch = e.touches[0];
-                  const dx = Math.abs(touch.clientX - touchStartRef.current.x);
-                  const dy = Math.abs(touch.clientY - touchStartRef.current.y);
-                  if (dx > 10 || dy > 10) {
-                    isDraggingRef.current = true;
-                    e.preventDefault();
-                    const draggedEl = e.currentTarget;
-                    draggedEl.style.visibility = 'hidden';
-                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                    draggedEl.style.visibility = '';
-                    const targetId = target?.closest('[data-cardid]')?.dataset.cardid;
-                    if (targetId && targetId !== card.id) {
-                      onDragOver({ preventDefault:()=>{} }, targetId);
-                    }
-                  }
-                }}
-                onTouchEnd={e => {
-                  if (handContainerRef.current) handContainerRef.current.style.overflowX = 'auto';
-                  if (!isDraggingRef.current) {
-                    e.preventDefault();
-                    toggleCard(card.id);
-                  }
-                  setDraggedId(null);
-                  isDraggingRef.current = false;
-                  touchStartRef.current = null;
-                }}
-                initial={{ opacity:0, y:60, rotate: -5 }}
-                animate={{ opacity:1, y:0, rotate:0 }}
-                transition={{ duration:0.35, ease:'backOut' }}
-                style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab', touchAction:'none' }}>
-                <div style={{
-                  borderRadius:10,
-                  boxShadow: newCardId === card.id ? '0 0 18px 4px rgba(46,134,193,0.85)' : 'none',
-                  transform: newCardId === card.id ? 'translateY(-14px)' : 'none',
-                  transition:'all 0.3s',
-                }}>
-                  <Card card={card}
-                  selected={selectedCards.includes(card.id)}
-                  onClick={'ontouchstart' in window ? undefined : () => toggleCard(card.id)} />
-                </div>
-              </motion.div>
-            ))
-          }
-        </div>
-      </div>
+        {(() => {
+          const isMobile = window.innerWidth < 600;
+          const orderedHand = handOrder.map(id => me?.hand?.find(c => c.id===id)).filter(Boolean);
+          const cardW = isMobile ? 62 : 84;
+          const cardH = isMobile ? 90 : 120;
+          const availableW = window.innerWidth - 48;
+          const count = orderedHand.length;
+          const offset = count <= 1 ? cardW + 8 : Math.min(cardW + 8, (availableW - cardW) / (count - 1));
+
+          if (isMobile) return (
+            <div style={{ position:'relative', height: cardH + 30, marginTop:8 }}>
+              {orderedHand.map((card, i) => {
+                const isSelected = selectedCards.includes(card.id);
+                const isNew = newCardId === card.id;
+                return (
+                  <motion.div
+                    key={card.id}
+                    data-cardid={card.id}
+                    initial={{ opacity:0, y:40 }}
+                    animate={{
+                      opacity:1,
+                      x: i * offset,
+                      y: isSelected ? -20 : 0,
+                      zIndex: isSelected ? 100 : i,
+                    }}
+                    transition={{ duration:0.2 }}
+                    style={{
+                      position:'absolute', top:0, left:0,
+                      zIndex: isSelected ? 100 : i,
+                      filter: isNew ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                      touchAction:'none',
+                    }}
+                    onTouchStart={e => {
+                      touchStartRef.current = { x:e.touches[0].clientX, y:e.touches[0].clientY };
+                      isDraggingRef.current = false;
+                      setDraggedId(card.id);
+                    }}
+                    onTouchMove={e => {
+                      if (!touchStartRef.current) return;
+                      const touch = e.touches[0];
+                      const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+                      const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+                      if (dx > 8 || dy > 8) {
+                        isDraggingRef.current = true;
+                        // Find which card position the finger is over based on x position
+                        const containerLeft = e.currentTarget.parentElement.getBoundingClientRect().left;
+                        const fingerX = touch.clientX - containerLeft;
+                        const targetIndex = Math.min(count - 1, Math.max(0, Math.round((fingerX - cardW/2) / offset)));
+                        const targetCard = orderedHand[targetIndex];
+                        if (targetCard && targetCard.id !== card.id) {
+                          onDragOver({ preventDefault:()=>{} }, targetCard.id);
+                        }
+                      }
+                    }}
+                    onTouchEnd={e => {
+                      if (!isDraggingRef.current) {
+                        toggleCard(card.id);
+                      }
+                      setDraggedId(null);
+                      isDraggingRef.current = false;
+                      touchStartRef.current = null;
+                    }}>
+                    <Card card={card} selected={isSelected} />
+                  </motion.div>
+                );
+              })}
+            </div>
+          );
+
+          // Desktop layout — horizontal scroll
+          return (
+            <div ref={handContainerRef} style={{ overflowX:'auto', paddingBottom:4 }}>
+              <div style={{ display:'flex', gap:8, paddingTop:20 }}>
+                {orderedHand.map(card => (
+                  <motion.div key={card.id} draggable
+                    data-cardid={card.id}
+                    onDragStart={() => setDraggedId(card.id)}
+                    onDragOver={e => onDragOver(e, card.id)}
+                    onDragEnd={() => setDraggedId(null)}
+                    initial={{ opacity:0, y:60, rotate:-5 }}
+                    animate={{ opacity:1, y:0, rotate:0 }}
+                    transition={{ duration:0.35, ease:'backOut' }}
+                    style={{
+                      opacity: draggedId===card.id ? 0.4 : 1,
+                      cursor:'grab',
+                      filter: newCardId===card.id ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                    }}>
+                    <Card card={card}
+                      selected={selectedCards.includes(card.id)}
+                      onClick={() => toggleCard(card.id)} />
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
       </div>
 
       {/* Toast message */}
