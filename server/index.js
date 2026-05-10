@@ -652,7 +652,8 @@ io.on('connection', (socket) => {
 
     io.to(code).emit('playerDisconnected', { 
       playerId: player.id, 
-      playerName: player.name 
+      playerName: player.name
+      deadline: Date.now() + 30000, 
     });
 
     // Give 30 seconds to reconnect
@@ -661,10 +662,15 @@ io.on('connection', (socket) => {
       
       console.log(`${player.name} did not reconnect — replacing with bot`);
       
-      // Replace with bot
+      // Replace with bot in BOTH room.players and room.game.players
       player.isBot = true;
       player.difficulty = 'easy';
       player.isDisconnected = false;
+      const gamePlayer = room.game?.players?.find(p => p.id === player.id);
+      if (gamePlayer) {
+        gamePlayer.isBot = true;
+        gamePlayer.difficulty = 'easy';
+      }
 
       // Check if only bots left
       const humanPlayers = room.game.players.filter(p => !p.isBot && !p.eliminated);

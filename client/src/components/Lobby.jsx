@@ -581,7 +581,11 @@ export default function Lobby({ onGameStart }) {
             </button>
           )}
           {currentRoom.isHost && (
-            <button onClick={startGame}
+            <button onClick={() => {
+              const notReady = currentRoom.players.filter(p => !p.isBot && !p.isReady);
+              if (notReady.length > 0) return setError(`Waiting for ${notReady.map(p => p.name).join(', ')} to be ready!`);
+              startGame();
+          }}
               disabled={currentRoom.players.length < 2}
               style={{
                 padding:'14px', borderRadius:50, border:'none',

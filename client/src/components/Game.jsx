@@ -33,6 +33,8 @@ export default function Game({ roomInfo }) {
   const touchStartRef = useRef(null);
   const isDraggingRef = useRef(false);
   const handContainerRef = useRef(null);
+  const [disconnectInfo, setDisconnectInfo] = useState(null);
+  const [disconnectCountdown, setDisconnectCountdown] = useState(0);
 
   useEffect(() => {
     if (!gameState) return;
@@ -79,10 +81,11 @@ export default function Game({ roomInfo }) {
       playSound('piou');
       setTimeout(() => setPiouActive(false), 3000);
     });
-    socket.on('playerDisconnected', ({ playerName }) => {
-      msg(`⚠️ ${playerName} disconnected — waiting 30s...`);
+    socket.on('playerDisconnected', ({ playerName, deadline }) => {
+      setDisconnectInfo({ playerName, deadline });
     });
     socket.on('playerReconnected', ({ playerName }) => {
+      setDisconnectInfo(null);
       msg(`✅ ${playerName} reconnected!`);
     });
 
@@ -175,6 +178,19 @@ export default function Game({ roomInfo }) {
     el.addEventListener('touchmove', handler, { passive: false });
     return () => el.removeEventListener('touchmove', handler);
   }, []);
+
+  useEffect(() => {
+    if (!disconnectInfo) return;
+    const interval = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((disconnectInfo.deadline - Date.now()) / 1000));
+      setDisconnectCountdown(remaining);
+      if (remaining === 0) {
+        setDisconnectInfo(null);
+        clearInterval(interval);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [disconnectInfo]);
 
   if (!gameState) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}>
@@ -489,6 +505,36 @@ function sortMeldCards(cards, type) {
             😤 PIOU!!!
           </motion.div>
         </div>
+      )}
+      
+{/* Disconnect banner */}
+      {disconnectInfo && (
+        <motion.div
+          initial={{ y:-60 }}
+          animate={{ y:0 }}
+          style={{
+            position:'fixed', top: gameState.stopCalledBy ? 70 : 0,
+            left:0, right:0, zIndex:190,
+            background:'rgba(30,30,30,0.95)',
+            padding:'10px 20px',
+            display:'flex', justifyContent:'space-between', alignItems:'center',
+            boxShadow:'0 4px 20px rgba(0,0,0,0.5)',
+          }}>
+          <div>
+            <div style={{ fontWeight:900, fontSize:15 }}>
+              ⚠️ {disconnectInfo.playerName} disconnected!
+            </div>
+            <div style={{ fontSize:12, opacity:0.7, marginTop:2 }}>
+              Waiting for reconnection... replacing with bot if they don't come back
+            </div>
+          </div>
+          <div style={{
+            fontFamily:"'Fredoka One',cursive", fontSize:28,
+            color: disconnectCountdown <= 10 ? '#e63946' : '#f4a522',
+          }}>
+            {disconnectCountdown}s
+          </div>
+        </motion.div>
       )}
 
 {/* ── STOP BANNER ── */}
