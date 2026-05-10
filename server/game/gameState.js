@@ -46,6 +46,7 @@ export function createGame(playerInfos) {
     pickedFromDiscard: false,
     pickedDiscardCard: null,
     stopCalledBy: null,
+    lastDiscardedBy: null,
   };
 }
 
@@ -386,6 +387,7 @@ export function discardCard(game, playerId, cardId) {
   if (player.hand.length === 0) return endRound(game, playerId);
 
   nextTurn(game);
+  game.lastDiscardedBy = playerId;
   return { success: true, card };
 }
 

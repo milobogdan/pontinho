@@ -290,6 +290,9 @@ io.on('connection', (socket) => {
     if (player.stopBanned) return callback({ error: 'You cannot use STOP this round' });
     if (game.stopCalledBy) return callback({ error: 'STOP already in progress' });
     if (game.discardPile.length === 0) return callback({ error: 'No discard card' });
+    if (game.lastDiscardedBy === playerId) {
+      return callback({ error: 'You cannot STOP on your own discarded card' });
+    }
 
     const discardCard = game.discardPile.at(-1);
     if (discardCard.id !== claimedCardId) return callback({ error: 'Discard card has changed' });

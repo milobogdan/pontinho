@@ -1,6 +1,6 @@
+import { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
 import socket from '../socket';
 import Card from './Card';
 import { Avatar, randomBotAvatar } from './Avatar';
@@ -13,7 +13,8 @@ function playSound(type) {
     stop:    '/sounds/stop.wav',
     win:     '/sounds/win.wav',
     error:   '/sounds/error.mp3',
-    piou:    '/sounds/piou.m4a', 
+    piou:    '/sounds/piou.m4a',
+    turn:    '/sounds/turn.mp3', 
   };
   const audio = new Audio(files[type]);
   audio.volume = type === 'win' ? 0.5 : 0.3;
@@ -28,6 +29,7 @@ export default function Game({ roomInfo }) {
   const [draggedId, setDraggedId]  = useState(null);
   const [stopCountdown, setStopCountdown] = useState(120);
   const [piouActive, setPiouActive] = useState(false);
+  const [newCardId, setNewCardId] = useState(null);
 
   useEffect(() => {
     if (!gameState) return;
@@ -49,7 +51,21 @@ export default function Game({ roomInfo }) {
         }).map(c => c.id);
       }
 
-      // Single card drawn during play → append at end
+      // Single card drawn during play → sort into correct position
+      if (newOnes.length === 1) {
+        setTimeout(() => setNewCardId(newOnes[0]), 50);
+        setTimeout(() => setNewCardId(null), 2000);
+        const newCard = player.hand.find(c => c.id === newOnes[0]);
+        const suitOrder = { spades:0, hearts:1, diamonds:2, clubs:3 };
+        const allSorted = [...kept.map(id => player.hand.find(c => c.id === id)).filter(Boolean), newCard]
+          .sort((a, b) => {
+            if (a.isJoker) return 1;
+            if (b.isJoker) return -1;
+            const s = (suitOrder[a.suit] ?? 4) - (suitOrder[b.suit] ?? 4);
+            return s !== 0 ? s : a.value - b.value;
+          });
+        return allSorted.map(c => c.id);
+      }
       return [...kept, ...newOnes];
     });
   }, [gameState]);
@@ -124,6 +140,15 @@ export default function Game({ roomInfo }) {
       }
     }
   }, [gameState?.status]);
+
+  const prevIsMyTurnRef = useRef(false);
+  useEffect(() => {
+    const myTurn = gameState?.players?.[gameState?.currentPlayerIndex]?.id === roomInfo.playerId;
+    if (myTurn && !prevIsMyTurnRef.current && gameState?.status === 'playing') {
+      playSound('turn');
+    }
+    prevIsMyTurnRef.current = myTurn;
+  }, [gameState?.currentPlayerIndex, gameState?.status]);
 
   if (!gameState) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}>
@@ -505,16 +530,20 @@ function sortMeldCards(cards, type) {
           </span>
         </div>
 
-        <div style={{
-          background: isMyTurn ? 'rgba(244,165,34,0.18)' : 'rgba(255,255,255,0.07)',
-          border: `2px solid ${isMyTurn ? '#f4a522' : 'rgba(255,255,255,0.1)'}`,
-          borderRadius:50, padding:'7px 20px',
-          fontWeight:800, fontSize:15,
-          color: isMyTurn ? '#f4a522' : '#fff',
-          transition:'all 0.3s',
-        }}>
+        <motion.div
+          key={isMyTurn ? 'myturn' : 'theirturn'}
+          initial={isMyTurn ? { scale:0.8, y:-10 } : { scale:1, y:0 }}
+          animate={isMyTurn ? { scale:[1.1, 1], y:0 } : { scale:1, y:0 }}
+          transition={{ type:'spring', bounce:0.5, duration:0.4 }}
+          style={{
+            background: isMyTurn ? 'rgba(244,165,34,0.18)' : 'rgba(255,255,255,0.07)',
+            border: `2px solid ${isMyTurn ? '#f4a522' : 'rgba(255,255,255,0.1)'}`,
+            borderRadius:50, padding:'7px 20px',
+            fontWeight:800, fontSize:15,
+            color: isMyTurn ? '#f4a522' : '#fff',
+          }}>
           {isMyTurn ? '⭐ Your turn!' : `${currentPlayer?.name}'s turn`}
-        </div>
+        </motion.div>
 
         <div style={{ fontSize:12, opacity:0.45,
           background:'rgba(255,255,255,0.08)', padding:'4px 12px', borderRadius:20 }}>
@@ -828,9 +857,16 @@ function sortMeldCards(cards, type) {
                 animate={{ opacity:1, y:0, rotate:0 }}
                 transition={{ duration:0.35, ease:'backOut' }}
                 style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab' }}>
-                <Card card={card}
-                  selected={selectedCards.includes(card.id)}
-                  onClick={() => toggleCard(card.id)} />
+                <div style={{
+                  borderRadius:10,
+                  boxShadow: newCardId === card.id ? '0 0 18px 4px rgba(46,134,193,0.85)' : 'none',
+                  transform: newCardId === card.id ? 'translateY(-14px)' : 'none',
+                  transition:'all 0.3s',
+                }}>
+                  <Card card={card}
+                    selected={selectedCards.includes(card.id)}
+                    onClick={() => toggleCard(card.id)} />
+                </div>
               </motion.div>
             ))
           }
