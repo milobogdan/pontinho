@@ -56,6 +56,14 @@ async function processBotTurn(room) {
     return;
   }
   console.log(`🤖 Bot turn: ${current.name} phase: ${room.game.turnPhase}`);
+
+  // Thinking delay — gives players time to tap discard for STOP
+  const thinkTime = current.difficulty === 'hard' ? 1500 : current.difficulty === 'medium' ? 2000 : 2500;
+  await new Promise(resolve => setTimeout(resolve, thinkTime));
+
+  // Check again after delay in case STOP was called during thinking
+  if (room.game?.stopCalledBy) return;
+
   try {
     await executeBotTurn(
       room.game, current.id, roomPlayer.difficulty || 'easy',
