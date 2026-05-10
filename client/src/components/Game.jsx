@@ -30,6 +30,8 @@ export default function Game({ roomInfo }) {
   const [stopCountdown, setStopCountdown] = useState(120);
   const [piouActive, setPiouActive] = useState(false);
   const [newCardId, setNewCardId] = useState(null);
+  const touchStartRef = useRef(null);
+  const isDraggingRef = useRef(false);
 
   useEffect(() => {
     if (!gameState) return;
@@ -844,21 +846,38 @@ function sortMeldCards(cards, type) {
                 onDragStart={() => setDraggedId(card.id)}
                 onDragOver={e => onDragOver(e, card.id)}
                 onDragEnd={() => setDraggedId(null)}
-                onTouchStart={() => setDraggedId(card.id)}
+                onTouchStart={e => {
+                  touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                  isDraggingRef.current = false;
+                  setDraggedId(card.id);
+                }}
                 onTouchMove={e => {
-                  e.preventDefault();
+                  if (!touchStartRef.current) return;
                   const touch = e.touches[0];
-                  // Temporarily hide dragged card so elementFromPoint finds the card underneath
-                  const draggedEl = e.currentTarget;
-                  draggedEl.style.visibility = 'hidden';
-                  const target = document.elementFromPoint(touch.clientX, touch.clientY);
-                  draggedEl.style.visibility = '';
-                  const targetId = target?.closest('[data-cardid]')?.dataset.cardid;
-                  if (targetId && targetId !== draggedId) {
-                    onDragOver({ preventDefault:()=>{} }, targetId);
+                  const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+                  const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+                  if (dx > 10 || dy > 10) {
+                    isDraggingRef.current = true;
+                    e.preventDefault();
+                    const draggedEl = e.currentTarget;
+                    draggedEl.style.visibility = 'hidden';
+                    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                    draggedEl.style.visibility = '';
+                    const targetId = target?.closest('[data-cardid]')?.dataset.cardid;
+                    if (targetId && targetId !== card.id) {
+                      onDragOver({ preventDefault:()=>{} }, targetId);
+                    }
                   }
                 }}
-                onTouchEnd={() => setDraggedId(null)}
+                onTouchEnd={e => {
+                  if (!isDraggingRef.current) {
+                    e.preventDefault();
+                    toggleCard(card.id);
+                  }
+                  setDraggedId(null);
+                  isDraggingRef.current = false;
+                  touchStartRef.current = null;
+                }}
                 initial={{ opacity:0, y:60, rotate: -5 }}
                 animate={{ opacity:1, y:0, rotate:0 }}
                 transition={{ duration:0.35, ease:'backOut' }}
@@ -870,8 +889,8 @@ function sortMeldCards(cards, type) {
                   transition:'all 0.3s',
                 }}>
                   <Card card={card}
-                    selected={selectedCards.includes(card.id)}
-                    onClick={() => toggleCard(card.id)} />
+                  selected={selectedCards.includes(card.id)}
+                  onClick={'ontouchstart' in window ? undefined : () => toggleCard(card.id)} />
                 </div>
               </motion.div>
             ))
