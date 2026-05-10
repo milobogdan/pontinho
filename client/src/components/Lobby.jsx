@@ -218,6 +218,14 @@ export default function Lobby({ onGameStart }) {
           🔗 Join Game
         </button>
       </motion.div>
+      <button onClick={() => window.location.reload()} style={{
+        marginTop:4, padding:'8px 20px', borderRadius:20,
+        border:'1px solid rgba(255,255,255,0.15)',
+        background:'transparent', color:'rgba(255,255,255,0.3)',
+        cursor:'pointer', fontSize:13,
+      }}>
+        ← Back to Start
+      </button>
     </div>
   );
 

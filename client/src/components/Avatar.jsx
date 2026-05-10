@@ -56,8 +56,9 @@ export function AvatarPicker({ selected, onSelect }) {
           <div key={av.id} onClick={() => onSelect(av.id)}
             style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
             <div style={{
-              width:64, height:64, borderRadius:'50%', overflow:'hidden',
-              border: selected === av.id ? '3px solid #f4a522' : '3px solid rgba(255,255,255,0.2)',
+              width:70, height:70,
+              border: selected === av.id ? '3px solid #f4a522' : '3px solid transparent',
+              borderRadius:'50%',
               transform: selected === av.id ? 'scale(1.15)' : 'scale(1)',
               transition:'all 0.2s',
               boxShadow: selected === av.id ? '0 0 18px rgba(244,165,34,0.65)' : 'none',
