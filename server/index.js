@@ -652,13 +652,14 @@ io.on('connection', (socket) => {
 
     io.to(code).emit('playerDisconnected', { 
       playerId: player.id, 
-      playerName: player.name
+      playerName: player.name,
       deadline: Date.now() + 30000, 
     });
 
     // Give 30 seconds to reconnect
     player.disconnectTimer = setTimeout(() => {
       if (!player.isDisconnected) return; // They reconnected!
+      if (!room.game || room.game.status !== 'playing') return;
       
       console.log(`${player.name} did not reconnect — replacing with bot`);
       

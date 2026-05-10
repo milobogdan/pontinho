@@ -34,7 +34,7 @@ export default function Game({ roomInfo }) {
   const isDraggingRef = useRef(false);
   const handContainerRef = useRef(null);
   const [disconnectInfo, setDisconnectInfo] = useState(null);
-  const [disconnectCountdown, setDisconnectCountdown] = useState(0);
+  const [disconnectCountdown, setDisconnectCountdown] = useState(30);
 
   useEffect(() => {
     if (!gameState) return;
@@ -182,7 +182,9 @@ export default function Game({ roomInfo }) {
   useEffect(() => {
     if (!disconnectInfo) return;
     const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((disconnectInfo.deadline - Date.now()) / 1000));
+      const remaining = disconnectInfo?.deadline 
+        ? Math.max(0, Math.ceil((disconnectInfo.deadline - Date.now()) / 1000))
+        : 30;
       setDisconnectCountdown(remaining);
       if (remaining === 0) {
         setDisconnectInfo(null);
@@ -506,7 +508,7 @@ function sortMeldCards(cards, type) {
           </motion.div>
         </div>
       )}
-      
+
 {/* Disconnect banner */}
       {disconnectInfo && (
         <motion.div
