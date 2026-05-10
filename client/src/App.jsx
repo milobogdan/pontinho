@@ -58,15 +58,15 @@ const RULES_CONTENT = {
     { title: '🃏 Valores', content: '2-K = valor nominal. Ás = 1 (ou 14 com múltiplos Ases). Joker = 50 pts.' },
   ],
   ro: [
-    { title: '🃏 Configurare', content: '108 cărți (2 pachete + 4 Jokeri). Fiecare jucător primește 9 cărți.' },
-    { title: '🎯 Scop', content: 'Fii primul care golește mâna. Ceilalți numără cărțile rămase ca puncte. 200+ puncte = explozie! Explodezi de două ori = eliminat!' },
-    { title: '🔄 Rândul Tău', content: 'Trage din grămadă SAU ia descărdul (doar dacă îl poți folosi într-o secvență). Joacă combinații, extinde existente, apoi aruncă.' },
-    { title: '🃏 Primul Rând', content: 'Primul jucător trage și poate păstra sau arunca și retrage. Nu poți arunca Jokeri!' },
-    { title: '📦 Seturi', content: '3 cărți același rang, toate culori diferite. Fără Jokeri. Extinde până la 6 cărți.' },
-    { title: '🏃 Serii', content: '3+ cărți consecutive de aceeași culoare. Jokerul doar la mijloc (max 1 per serie). La câștig, Jokerul poate fi la început sau sfârșit.' },
-    { title: '🛑 STOP!', content: 'Atinge cartea aruncată în rândul altcuiva pentru a striga STOP! Ai 2 minute să joci toate cărțile. Eșec = penalizare!' },
-    { title: '💥 Explozie', content: 'Prima dată 200+ pts: scorul se resetează. A doua oară: eliminat! Ultimul jucător câștigă.' },
-    { title: '🃏 Valori', content: '2-K = valoare nominală. As = 1 (sau 14 cu mai mulți Ași). Joker = 50 pts.' },
+    { title: '🃏 Pregătire', content: 'Jocul folosește 108 cărți (2 pachete + 4 Jokeri). Fiecare jucător primește câte 9 cărți. O carte este întoarsă pe față pentru a începe teancul de cărți decartate.' },
+    { title: '🎯 Scopul Jocului', content: 'Fii primul care își golește mâna. Ceilalți jucători își numără cărțile rămase ca puncte. Dacă atingi 200+ puncte, explodezi! Cine explodează de două ori este eliminat.' },
+    { title: '🔄 Turul Tău', content: 'Trage o carte din pachet SAU ia ultima carte decartată (doar dacă o poți folosi imediat într-o suită). Joacă formații noi, extinde-le pe cele existente, apoi decartează o carte.' },
+    { title: '🃏 Prima Tură', content: 'Primul jucător trage o carte și poate alege să o păstreze sau să o decarteze și să tragă alta. Atenție: Jokerii nu pot fi decartați!' },
+    { title: '📦 Seturi', content: '3 cărți de același rang, cu toate culorile diferite. Fără Jokeri. Extensibil până la 6 cărți (cel mult 2 din fiecare culoare).' },
+    { title: '🏃 Suite', content: '3+ cărți consecutive de aceeași culoare. Jokerul doar la mijloc (max 1 per suită). La câștig, Jokerul poate fi și la început sau la sfârșit.' },
+    { title: '🛑 STOP!', content: 'Atinge cartea decartată în tura altui jucător pentru a striga STOP! Ai 2 minute să îți joci toate cărțile. Dacă eșuezi, primești penalizare pentru STOP fals!' },
+    { title: '💥 Explozia', content: 'Prima dată la 200+ puncte: scorul se resetează la valoarea celui mai mare scor al unui adversar. A doua oară: ești eliminat! Ultimul rămas câștigă.' },
+    { title: '🃏 Valoarea Cărților', content: '2–K: valoarea nominală. As: 1 punct (sau 14 cu mai mulți Ași). Joker: 50 de puncte.' },
   ],
 };
 
@@ -107,10 +107,12 @@ export default function App() {
           src="/pontinho.jpg"
           alt="Pontinho with Family"
           style={{
-            maxHeight:'100vh',
-            maxWidth:'100vw',
+            maxHeight:'92vh',
+            maxWidth:'92vw',
             objectFit:'contain',
             position:'relative', zIndex:1,
+            borderRadius:24,
+            boxShadow:'0 20px 60px rgba(0,0,0,0.5)',
           }}
         />
       </div>
@@ -163,12 +165,12 @@ export default function App() {
             width:'100%', maxWidth:360,
             padding:'18px', borderRadius:50, border:'none',
             background:'linear-gradient(135deg, #f9c55a, #f4a522)',
-            color:'#3a1f00', fontFamily:"'Fredoka One',cursive",
-            fontSize:28, fontWeight:700, letterSpacing:2,
+            fontFamily: lang === 'ro' ? "'Nunito', sans-serif" : "'Fredoka One',cursive",
+            fontSize:28, fontWeight:800, letterSpacing: lang === 'ro' ? 1 : 2,
             cursor:'pointer',
             boxShadow:'0 8px 32px rgba(244,165,34,0.5)',
           }}>
-          🃏 {t.play}
+          {t.play}
         </motion.button>
 
         <motion.button
