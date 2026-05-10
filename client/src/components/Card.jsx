@@ -6,7 +6,7 @@ function CardBack({ small, medium, onClick }) {
   const h = small ? 68 : medium ? (isMobile ? 68 : 86) : (isMobile ? 90 : 120);
   return (
     <div onClick={onClick} style={{
-      width:w, height:h, borderRadius:8, flexShrink:0,
+      width:w, height:h, borderRadius:7, flexShrink:0,
       cursor: onClick ? 'pointer' : 'default',
       overflow:'hidden',
       WebkitTouchCallout:'none', WebkitUserSelect:'none',
@@ -31,9 +31,9 @@ export default function Card({ card, selected, onClick, small, medium }) {
 
   if (card.isJoker) return (
     <div onClick={onClick} style={{
-      width:w, height:h, borderRadius:8, flexShrink:0,
-      background:'#fff',
-      border: selected ? '3px solid #f4a522' : '2px solid #e0ddd4',
+      width:w, height:h, borderRadius:16, flexShrink:0,
+      background:'transparent',
+      border: 'none',
       cursor: onClick ? 'pointer' : 'default',
       transform: selected ? 'translateY(-14px)' : 'none',
       transition:'all 0.15s',
@@ -43,7 +43,7 @@ export default function Card({ card, selected, onClick, small, medium }) {
     }}>
       <img src="/cards/X1.png" alt="Joker"
         draggable={false}
-        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', pointerEvents:'none' }} />
+        style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', pointerEvents:'none' }} />
     </div>
   );
 
@@ -52,9 +52,9 @@ export default function Card({ card, selected, onClick, small, medium }) {
 
   return (
     <div onClick={onClick} style={{
-      width:w, height:h, borderRadius:8, flexShrink:0,
-      background:'#fff',
-      border: selected ? '3px solid #f4a522' : '2px solid #e0ddd4',
+      width:w, height:h, borderRadius:7, flexShrink:0,
+      background:'transparent',
+      border: 'none',
       cursor: onClick ? 'pointer' : 'default',
       transform: selected ? 'translateY(-14px)' : 'none',
       transition:'all 0.15s',
@@ -66,7 +66,7 @@ export default function Card({ card, selected, onClick, small, medium }) {
         src={imgUrl}
         alt={`${card.rank} of ${card.suit}`}
         draggable={false}
-        style={{ width:'100%', height:'100%', objectFit:'contain', display:'block', pointerEvents:'none' }}
+        style={{ width:'100%', height:'100%', objectFit:'cover', display:'block', pointerEvents:'none' }}
       />
     </div>
   );

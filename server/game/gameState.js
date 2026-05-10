@@ -1,3 +1,4 @@
+import { findWinningMelds } from './bots.js';
 import { createDeck, deal } from './deck.js';
 import { isValidMeld, isValidSet, isValidRun, isValidExtension,
          calculateHandScore, canUseDiscardCard, canReplaceJoker,
@@ -179,11 +180,11 @@ export function drawFromDiscard(game, playerId) {
   const card = game.discardPile.at(-1);
   const player = getCurrentPlayer(game);
 
-  const wouldWinWithSet = !card.isJoker &&
-    player.hand.filter(c => !c.isJoker && c.rank === card.rank && c.suit !== card.suit).length >= 2 &&
-    new Set(player.hand.filter(c => !c.isJoker && c.rank === card.rank && c.suit !== card.suit).map(c => c.suit)).size >= 2;
+  // Allow picking for a set only if it leads to a complete winning hand
+  const handWithCard = [...player.hand, card];
+  const wouldWin = findWinningMelds(handWithCard) !== null;
 
-  if (!canUseDiscardCard(card, player.hand, game.melds) && !wouldWinWithSet) {
+  if (!canUseDiscardCard(card, player.hand, game.melds) && !wouldWin) {
     return { error: `You can only pick from discard if you can use ${card.rank} in a run` };
   }
 

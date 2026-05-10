@@ -54,20 +54,10 @@ export default function Game({ roomInfo }) {
         }).map(c => c.id);
       }
 
-      // Single card drawn during play → sort into correct position
+      // Single card drawn → append at end with blue glow
       if (newOnes.length === 1) {
         setTimeout(() => setNewCardId(newOnes[0]), 50);
         setTimeout(() => setNewCardId(null), 2000);
-        const newCard = player.hand.find(c => c.id === newOnes[0]);
-        const suitOrder = { spades:0, hearts:1, diamonds:2, clubs:3 };
-        const allSorted = [...kept.map(id => player.hand.find(c => c.id === id)).filter(Boolean), newCard]
-          .sort((a, b) => {
-            if (a.isJoker) return 1;
-            if (b.isJoker) return -1;
-            const s = (suitOrder[a.suit] ?? 4) - (suitOrder[b.suit] ?? 4);
-            return s !== 0 ? s : a.value - b.value;
-          });
-        return allSorted.map(c => c.id);
       }
       return [...kept, ...newOnes];
     });
@@ -186,6 +176,10 @@ export default function Game({ roomInfo }) {
     if (event === 'discardCard') playSound('discard');
     socket.emit(event, data, (res) => {
       if (res?.error) {
+        if (res.error === 'No active game') {
+          msg('⚠️ Connection lost — please refresh the page');
+          return;
+        }
         playSound('error');
         msg(res.error);
       } else if (event === 'drawFromPile' || event === 'drawFromDiscard' || event === 'firstDraw') {
@@ -610,7 +604,7 @@ function sortMeldCards(cards, type) {
               )}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <Avatar id={p.avatarId || 'sporty'} size={32} />
+                  <Avatar id={p.avatarId || 'sporty'} size={40} />
                   <span style={{ fontWeight:800, fontSize:12,
                     color: !p.isBot ? '#fff' :
                       p.difficulty === 'easy' ? '#4caf50' :
@@ -751,8 +745,8 @@ function sortMeldCards(cards, type) {
                 cursor: (!isMyTurn && phase==='draw' && !me?.stopBanned && !gameState.stopCalledBy) ? 'pointer' : (isMyTurn&&phase==='draw' ? 'pointer' : 'default'),
                 transform:'scale(1.3)', transformOrigin:'bottom center',
                 transition:'all 0.2s',
-                filter: (!isMyTurn && phase==='draw' && !me?.stopBanned && topDiscard && !gameState.stopCalledBy)
-                  ? 'drop-shadow(0 0 8px rgba(230,57,70,0.9))'
+                filter: (!isMyTurn && phase==='draw' && !me?.stopBanned && topDiscard && !gameState.stopCalledBy && !me?.discardBanned && gameState.lastDiscardedBy !== roomInfo.playerId)
+                  ? 'drop-shadow(0 0 12px rgba(230,57,70,1)) drop-shadow(0 0 20px rgba(230,57,70,0.7))'
                   : 'none',
               }}
               onMouseEnter={e => { if(isMyTurn&&phase==='draw') e.currentTarget.style.transform='scale(1.4)'; }}
@@ -787,7 +781,9 @@ function sortMeldCards(cards, type) {
               {phase==='firstKeepOrDiscard' && (
                 <div style={{ display:'flex', gap:10 }}>
                   <button className="btn-success" onClick={() => emit('firstKeepOrDiscard', { keep:true })}>✅ Keep</button>
-                  <button className="btn-danger" onClick={() => emit('firstKeepOrDiscard', { keep:false })}>🗑 Discard & redraw</button>
+                  {!me?.hand?.some(c => c.id === newCardId && c.isJoker) && (
+                    <button className="btn-danger" onClick={() => emit('firstKeepOrDiscard', { keep:false })}>🗑 Discard & redraw</button>
+                  )}
                 </div>
               )}
               {phase==='play' && <>

@@ -72,7 +72,7 @@ export default function Lobby({ onGameStart }) {
   if (!currentRoom) return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 24 }}>
       <h1 style={{ fontSize: 36, marginBottom: 8 }}>🃏 Card Game</h1>
-      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 32, borderRadius: 16, width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div style={{ background: 'rgba(0,0,0,0.3)', padding: 32, borderRadius: 16, width: 420, display: 'flex', flexDirection: 'column', gap: 16 }}>
         <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
         <input placeholder="Your name" value={playerName} onChange={e => setPlayerName(e.target.value)} />
         <button className="btn-primary" onClick={createRoom}>Create Room</button>

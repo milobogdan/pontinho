@@ -89,7 +89,9 @@ function isValidExtension(existingMeld, newCards) {
     return Object.values(suitCounts).every(count => count <= 2);
   }
 
-  return isValidRun([...existingMeld, ...newCards]);
+  const combined = [...existingMeld, ...newCards];
+  // Try normal run first, then winning run rules (allows Joker at start/end)
+  return isValidRun(combined) || isValidWinningRun(combined);
 }
 
 function calculateHandScore(hand) {
