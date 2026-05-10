@@ -54,10 +54,18 @@ export default function Lobby({ onGameStart }) {
       setChatBubbles(prev => [...prev, { ...msg, id }]);
       setTimeout(() => setChatBubbles(prev => prev.filter(b => b.id !== id)), 3000);
     });
+     socket.on('playerLeft', ({ name }) => {
+      // could show a toast here later
+    });
+    socket.on('youAreHost', () => {
+      setCurrentRoom(prev => prev ? { ...prev, isHost: true } : prev);
+    });
     return () => {
       socket.off('playerList');
       socket.off('gameStarted');
       socket.off('lobbyMessage');
+      socket.off('playerLeft');
+      socket.off('youAreHost');
     };
   }, []);
 

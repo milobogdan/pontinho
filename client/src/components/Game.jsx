@@ -79,6 +79,12 @@ export default function Game({ roomInfo }) {
       playSound('piou');
       setTimeout(() => setPiouActive(false), 3000);
     });
+    socket.on('playerDisconnected', ({ playerName }) => {
+      msg(`⚠️ ${playerName} disconnected — waiting 30s...`);
+    });
+    socket.on('playerReconnected', ({ playerName }) => {
+      msg(`✅ ${playerName} reconnected!`);
+    });
 
     socket.emit('getGameState', (res) => {
       if (res?.state) setGameState(res.state);
@@ -86,6 +92,8 @@ export default function Game({ roomInfo }) {
     return () => {
       socket.off('gameState');
       socket.off('stopTimeout');
+      socket.off('playerDisconnected');
+      socket.off('playerReconnected');
     };
   }, []);
 
@@ -133,6 +141,21 @@ export default function Game({ roomInfo }) {
       }
     }
   }, [gameState?.status]);
+
+  useEffect(() => {
+    socket.on('connect', () => {
+      // Try to rejoin if we have room info
+      if (roomInfo?.code && roomInfo?.playerId) {
+        socket.emit('rejoinRoom', { 
+          roomCode: roomInfo.code, 
+          playerId: roomInfo.playerId 
+        }, (res) => {
+          if (res?.error) msg('⚠️ Could not reconnect — please refresh');
+        });
+      }
+    });
+    return () => socket.off('connect');
+  }, [roomInfo]);
 
   const prevIsMyTurnRef = useRef(false);
   useEffect(() => {
