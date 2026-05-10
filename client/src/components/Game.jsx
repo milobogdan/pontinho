@@ -1,3 +1,4 @@
+import GameMenu from './GameMenu';
 import { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -35,6 +36,7 @@ export default function Game({ roomInfo }) {
   const handContainerRef = useRef(null);
   const [disconnectInfo, setDisconnectInfo] = useState(null);
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
+  const [isMuted, setIsMuted] = useState(false);
 
   useEffect(() => {
     if (!gameState) return;
@@ -100,13 +102,20 @@ export default function Game({ roomInfo }) {
     };
   }, []);
 
+  const bgMusicRef = useRef(null);
   useEffect(() => {
     const bg = new Audio('/sounds/background.mp3');
     bg.loop = true;
     bg.volume = 0.1;
     bg.play().catch(() => {});
+    bgMusicRef.current = bg;
     return () => { bg.pause(); bg.currentTime = 0; };
   }, []);
+
+  useEffect(() => {
+    if (!bgMusicRef.current) return;
+    bgMusicRef.current.volume = isMuted ? 0 : 0.1;
+  }, [isMuted]);
    
   useEffect(() => {
     if (!gameState?.stopCalledBy) return;
@@ -257,6 +266,12 @@ export default function Game({ roomInfo }) {
       }
     });
   }
+
+function handleLeave() {
+    socket.emit('leaveRoom', {}, () => {});
+    window.location.reload();
+  }
+
 function sortMeldCards(cards, type) {
     if (type === 'set') {
       const suitOrder = { spades: 0, hearts: 1, diamonds: 2, clubs: 3 };
@@ -601,12 +616,13 @@ function sortMeldCards(cards, type) {
         padding:'10px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)',
         flexShrink:0, zIndex:10,
       }}>
-        <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-          <span style={{ fontSize:22 }}>🃏</span>
-          <span style={{ fontFamily:"'Fredoka One',cursive", fontSize:20, letterSpacing:1 }}>
-            Round {gameState.round}
-          </span>
-        </div>
+        <GameMenu
+          gameState={gameState}
+          roomInfo={roomInfo}
+          isMuted={isMuted}
+          onToggleMute={() => setIsMuted(prev => !prev)}
+          onLeave={handleLeave}
+        />
 
         <motion.div
           key={isMyTurn ? 'myturn' : 'theirturn'}
@@ -623,9 +639,8 @@ function sortMeldCards(cards, type) {
           {isMyTurn ? '⭐ Your turn!' : `${currentPlayer?.name}'s turn`}
         </motion.div>
 
-        <div style={{ fontSize:12, opacity:0.45,
-          background:'rgba(255,255,255,0.08)', padding:'4px 12px', borderRadius:20 }}>
-          {phase}
+        <div style={{ fontFamily:"'Fredoka One',cursive", fontSize:18, opacity:0.8 }}>
+          Round {gameState.round}
         </div>
       </div>
 
