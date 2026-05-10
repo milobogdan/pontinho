@@ -167,15 +167,18 @@ io.on('connection', (socket) => {
   console.log('Connected:', socket.id);
 
   // ── CREATE ROOM ────────────────────────────────────────────────
-  socket.on('createRoom', ({ playerName, avatarId }, callback) => {
+  socket.on('createRoom', ({ playerName, avatarId, gameName, maxPlayers, isPrivate }, callback) => {
     const code = getRoomCode();
     const playerId = socket.id;
 
     rooms[code] = {
       code,
-      players: [{ id: playerId, socketId: socket.id, name: playerName, avatarId: avatarId || 'sporty' }],
+      players: [{ id: playerId, socketId: socket.id, name: playerName, avatarId: avatarId || 'sporty', isReady: true }],
       game: null,
       debugMode: false,
+      gameName: gameName || `${playerName}'s Game`,
+      maxPlayers: maxPlayers || 8,
+      isPrivate: isPrivate || false,
     };
 
     socket.join(code);
@@ -201,7 +204,7 @@ io.on('connection', (socket) => {
     socket.data.playerId = playerId;
 
     // Tell everyone in the room who is here
-    io.to(code).emit('playerList', room.players.map(p => ({ id: p.id, name: p.name })));
+    io.to(code).emit('playerList', getPlayerListData(room));
     console.log(`${playerName} joined room ${code}`);
     callback({ success: true, playerId, 
       players: room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot })) 
@@ -232,8 +235,17 @@ io.on('connection', (socket) => {
       : `Bot${room.players.length}`;
     room.players.push({ id: botId, socketId: null, name: botName, isBot: true, difficulty, avatarId: botAvatarId });
 
-    io.to(room.code).emit('playerList', room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot, difficulty: p.difficulty })));
+    io.to(room.code).emit('playerList', getPlayerListData(room));
     callback({ success: true, botId });
+  });
+
+  // ── REMOVE BOT ─────────────────────────────────────────────────
+  socket.on('removeBot', ({ botId }, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({ error: 'Room not found' });
+    room.players = room.players.filter(p => p.id !== botId);
+    io.to(room.code).emit('playerList', getPlayerListData(room));
+    callback?.({ success: true });
   });
 
   // ── TOGGLE DEBUG MODE ──────────────────────────────────────────
@@ -366,7 +378,66 @@ io.on('connection', (socket) => {
     broadcastGameState(room);
     callback({ success: true });
   });
-    
+  
+  // ── GET ROOMS ──────────────────────────────────────────────────
+  socket.on('getRooms', (callback) => {
+    const publicRooms = Object.values(rooms)
+      .filter(r => !r.isPrivate && r.game?.status !== 'playing' && r.players.length < (r.maxPlayers || 8))
+      .map(r => ({
+        code: r.code,
+        gameName: r.gameName || `${r.players[0]?.name}'s Game`,
+        host: r.players[0],
+        playerCount: r.players.length,
+        maxPlayers: r.maxPlayers || 8,
+      }));
+    callback(publicRooms);
+  });
+
+// ── SET ROOM OPTIONS ───────────────────────────────────────────
+  socket.on('setRoomOptions', ({ gameName, maxPlayers, isPrivate }, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({ error: 'Room not found' });
+    room.gameName = gameName;
+    room.maxPlayers = maxPlayers || 8;
+    room.isPrivate = isPrivate || false;
+    io.to(room.code).emit('roomOptions', { gameName, maxPlayers, isPrivate });
+    callback?.({ success: true });
+  });
+
+// ── TOGGLE READY ───────────────────────────────────────────────
+  socket.on('toggleReady', (callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({ error: 'Room not found' });
+    const player = room.players.find(p => p.id === socket.data.playerId);
+    if (!player) return callback?.({ error: 'Player not found' });
+    player.isReady = !player.isReady;
+    io.to(room.code).emit('playerList', getPlayerListData(room));
+    callback?.({ success: true, isReady: player.isReady });
+  });
+
+// ── LOBBY CHAT ─────────────────────────────────────────────────
+  socket.on('sendLobbyMessage', ({ message }, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({ error: 'Room not found' });
+    const player = room.players.find(p => p.id === socket.data.playerId);
+    if (!player) return callback?.({ error: 'Player not found' });
+    io.to(room.code).emit('lobbyMessage', {
+      playerId: socket.data.playerId,
+      playerName: player.name,
+      avatarId: player.avatarId,
+      message,
+    });
+    callback?.({ success: true });
+  });
+
+  function getPlayerListData(room) {
+  return room.players.map(p => ({
+    id: p.id, name: p.name, isBot: p.isBot,
+    difficulty: p.difficulty, avatarId: p.avatarId,
+    isReady: p.isReady || false,
+  }));
+}
+
   // ── GAME ACTIONS ───────────────────────────────────────────────
   function handleAction(fn, ...args) {
     const room = rooms[socket.data.roomCode];
