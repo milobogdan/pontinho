@@ -848,9 +848,15 @@ function sortMeldCards(cards, type) {
                 onTouchMove={e => {
                   e.preventDefault();
                   const touch = e.touches[0];
-                  const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                  const targetId = el?.closest('[data-cardid]')?.dataset.cardid;
-                  if (targetId && targetId !== draggedId) onDragOver({ preventDefault:()=>{} }, targetId);
+                  // Temporarily hide dragged card so elementFromPoint finds the card underneath
+                  const draggedEl = e.currentTarget;
+                  draggedEl.style.visibility = 'hidden';
+                  const target = document.elementFromPoint(touch.clientX, touch.clientY);
+                  draggedEl.style.visibility = '';
+                  const targetId = target?.closest('[data-cardid]')?.dataset.cardid;
+                  if (targetId && targetId !== draggedId) {
+                    onDragOver({ preventDefault:()=>{} }, targetId);
+                  }
                 }}
                 onTouchEnd={() => setDraggedId(null)}
                 initial={{ opacity:0, y:60, rotate: -5 }}
