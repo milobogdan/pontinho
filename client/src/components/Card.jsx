@@ -31,7 +31,7 @@ export default function Card({ card, selected, onClick, small, medium }) {
 
   if (card.isJoker) return (
     <div onClick={onClick} style={{
-      width:w, height:h, borderRadius:16, flexShrink:0,
+      width:w, height:h, borderRadius:7, flexShrink:0,
       background:'transparent',
       border: 'none',
       cursor: onClick ? 'pointer' : 'default',
