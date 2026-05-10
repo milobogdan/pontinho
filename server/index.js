@@ -406,7 +406,7 @@ io.on('connection', (socket) => {
   });
 
 // ── TOGGLE READY ───────────────────────────────────────────────
-  socket.on('toggleReady', (callback) => {
+  socket.on('toggleReady', (data, callback) => {
     const room = rooms[socket.data.roomCode];
     if (!room) return callback?.({ error: 'Room not found' });
     const player = room.players.find(p => p.id === socket.data.playerId);
@@ -597,6 +597,20 @@ io.on('connection', (socket) => {
     broadcastGameState(room);
     callback?.({ success: true });
     console.log(`${player.name} rejoined room ${roomCode}`);
+  });
+
+// ── LEAVE ROOM ─────────────────────────────────────────────────
+  socket.on('leaveRoom', (data, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({});
+    const player = room.players.find(p => p.id === socket.data.playerId);
+    room.players = room.players.filter(p => p.id !== socket.data.playerId);
+    socket.leave(socket.data.roomCode);
+    if (player) io.to(room.code).emit('playerLeft', { name: player.name });
+    io.to(room.code).emit('playerList', getPlayerListData(room));
+    if (room.players.filter(p => !p.isBot).length === 0) delete rooms[socket.data.roomCode];
+    socket.data.roomCode = null;
+    callback?.({});
   });
 
   // ── DISCONNECT ─────────────────────────────────────────────────

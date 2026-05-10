@@ -99,6 +99,7 @@ export default function Lobby({ onGameStart }) {
 
   function startGame() {
     socket.emit('startGame', (res) => {
+      console.log('startGame response:', res);
       if (res.error) return setError(res.error);
       onGameStart({ code: currentRoom.code, playerId: currentRoom.playerId, playerName });
     });
@@ -600,6 +601,7 @@ export default function Lobby({ onGameStart }) {
         {error && <p style={{ color:'#ff8080', fontSize:13 }}>{error}</p>}
 
         <button onClick={() => {
+          socket.emit('leaveRoom', {}, () => {});
           setCurrentRoom(null);
           setScreen('landing');
         }} style={{
