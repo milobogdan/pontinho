@@ -165,8 +165,9 @@ export default function App() {
             width:'100%', maxWidth:360,
             padding:'18px', borderRadius:50, border:'none',
             background:'linear-gradient(135deg, #f9c55a, #f4a522)',
-            fontFamily: lang === 'ro' ? "'Nunito', sans-serif" : "'Fredoka One',cursive",
-            fontSize:28, fontWeight:800, letterSpacing: lang === 'ro' ? 1 : 2,
+            fontFamily:"'Nunito', sans-serif",
+            fontSize:28, fontWeight:800, letterSpacing:1,
+            WebkitTextFillColor:'#3a1f00',
             cursor:'pointer',
             boxShadow:'0 8px 32px rgba(244,165,34,0.5)',
           }}>
