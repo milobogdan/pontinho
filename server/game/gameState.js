@@ -203,7 +203,7 @@ export function playMeld(game, playerId, cardIds) {
   if (cards.length !== cardIds.length) return { error: 'Some cards not found in your hand' };
 
   // If player picked from discard, that card must be used and only in a run
-  if (game.pickedFromDiscard) {
+  if (game.pickedFromDiscard && !game.stopCalledBy) {
     const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
     if (usesDiscardCard && !isValidRun(cards)) {
       return { error: 'Card picked from discard pile can only be used in a run' };
@@ -212,7 +212,8 @@ export function playMeld(game, playerId, cardIds) {
 
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
   const isWinningMove = remainingAfter.length === 1;
-  const valid = isWinningMove
+  const isStopPhase = !!game.stopCalledBy;
+  const valid = (isWinningMove || isStopPhase)
     ? (isValidSet(cards) || isValidWinningRun(cards))
     : isValidMeld(cards);
   if (!valid) return { error: 'Invalid meld' };
@@ -254,7 +255,7 @@ export function extendMeld(game, playerId, meldId, cardIds) {
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
   const isWinningMove = remainingAfter.length <= 1;
   const combined = [...meld.cards, ...cards];
-  const valid = isWinningMove
+  const valid = (isWinningMove || game.stopCalledBy)
     ? (isValidExtension(meld.cards, cards) || isValidWinningRun(combined))
     : isValidExtension(meld.cards, cards);
 
@@ -440,8 +441,12 @@ function penalizeStop(game, player, reason) {
 // ─── END OF ROUND & SCORING ───────────────────────────────────────────────────
 
 function endRound(game, winnerId) {
+  // Clear stop state when round ends
+  game.stopCalledBy = null;
+  game.stopDeadline = null;
+  game.stopOriginalPlayerIndex = null;
+  game.stopOriginalPhase = null;
   game.status = 'roundEnd';
-
   game.players.forEach(p => {
     if (p.id === winnerId || p.eliminated) return;
 

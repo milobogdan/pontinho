@@ -13,6 +13,7 @@ function playSound(type) {
     stop:    '/sounds/stop.wav',
     win:     '/sounds/win.wav',
     error:   '/sounds/error.mp3',
+    piou:    '/sounds/piou.m4a', 
   };
   const audio = new Audio(files[type]);
   audio.volume = type === 'win' ? 0.5 : 0.3;
@@ -22,15 +23,11 @@ function playSound(type) {
 export default function Game({ roomInfo }) {
   const [gameState, setGameState] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
-  const [stopMode, setStopMode]   = useState(false);        // player pressed STOP
-  const [stopHand, setStopHand]   = useState([]);           // hand + discard card in stop mode
-  const [stopMelds, setStopMelds] = useState([[]]);         // groups being built for STOP
   const [message, setMessage]     = useState('');
   const [handOrder, setHandOrder] = useState([]);
   const [draggedId, setDraggedId]  = useState(null);
-  const [activeMeld, setActiveMeld] = useState(0);
-  const [stopCountdown, setStopCountdown] = useState(30);
-  const [claimedStopCard, setClaimedStopCard] = useState(null);
+  const [stopCountdown, setStopCountdown] = useState(120);
+  const [piouActive, setPiouActive] = useState(false);
 
   useEffect(() => {
     if (!gameState) return;
@@ -62,15 +59,18 @@ export default function Game({ roomInfo }) {
       setGameState(state);
       setSelectedCards([]);
       // Only close stop mode if server says stop is resolved
-      if (!state.stopCalledBy || state.stopCalledBy !== roomInfo.playerId) {
-        setStopMode(false);
-        setStopMelds([[]]);
+      // Update countdown from server deadline
+      if (state.stopDeadline) {
+        const remaining = Math.max(0, Math.ceil((state.stopDeadline - Date.now()) / 1000));
+        setStopCountdown(remaining);
       }
     });
     socket.on('stopTimeout', () => {
-      setStopMode(false);
-      msg('⏰ Time\'s up! False STOP penalty applied');
+      setPiouActive(true);
+      playSound('piou');
+      setTimeout(() => setPiouActive(false), 3000);
     });
+
     socket.emit('getGameState', (res) => {
       if (res?.state) setGameState(res.state);
     });
@@ -89,15 +89,17 @@ export default function Game({ roomInfo }) {
   }, []);
    
   useEffect(() => {
-    if (!stopMode) return;
+    if (!gameState?.stopCalledBy) return;
     const interval = setInterval(() => {
-      setStopCountdown(prev => {
-        if (prev <= 1) { clearInterval(interval); return 0; }
-        return prev - 1;
-      });
+      if (gameState?.stopDeadline) {
+        const remaining = Math.max(0, Math.ceil((gameState.stopDeadline - Date.now()) / 1000));
+        setStopCountdown(remaining);
+      } else {
+        setStopCountdown(prev => Math.max(0, prev - 1));
+      }
     }, 1000);
     return () => clearInterval(interval);
-  }, [stopMode]);
+  }, [gameState?.stopCalledBy]);
 
   useEffect(() => {
     if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
@@ -138,6 +140,8 @@ export default function Game({ roomInfo }) {
   const topDiscard = gameState.discardPile.at(-1);
   const phase = gameState.turnPhase;
 
+  
+
   function msg(text) { setMessage(text); setTimeout(() => setMessage(''), 3000); }
 
   function emit(event, data = {}) {
@@ -165,55 +169,21 @@ export default function Game({ roomInfo }) {
     playSound('stop');
     if (!topDiscard) return msg('No discard card available');
     if (me.stopBanned) return msg('You cannot use STOP this round');
-    const claimedCard = topDiscard;
-    socket.emit('initiateStop', { claimedCardId: claimedCard.id }, (res) => {
-      if (res.error) return msg(res.error);
-      setClaimedStopCard(claimedCard); // ← save it
-      setStopHand([...(me.hand || []), claimedCard]);
-      setStopMelds([[]]);
-      setStopCountdown(60);
-      setStopMode(true);
+    socket.emit('initiateStop', { claimedCardId: topDiscard.id }, (res) => {
+      if (res?.error) return msg(res.error);
     });
   }
-
-
-  function addToStopMeld(card, meldIndex) {
-    setStopMelds(prev => {
-      const next = prev.map(m => m.filter(c => c.id !== card.id));
-      next[meldIndex] = [...next[meldIndex], card];
-      return next;
-    });
-  }
-
-  function removeFromStopMeld(card) {
-    setStopMelds(prev => prev.map(m => m.filter(c => c.id !== card.id)));
-  }
-
-  function submitStop() {
-    const meldIds = stopMelds.filter(m => m.length > 0).map(m => m.map(c => c.id));
-    const usedIds = meldIds.flat();
-    const unused  = stopHand.filter(c => !usedIds.includes(c.id));
-    if (unused.length > 1) return msg('You still have unassigned cards — assign all cards to melds first');
-    const finalDiscardId = unused[0]?.id || null;
-    socket.emit('callStop', { proposedMelds: meldIds, finalDiscardId }, (res) => {
-      if (res?.error && res?.penalized) {
-        setStopMode(false);
-        msg('😬 FALSE STOP! You lost your STOP and discard rights for this round');
-      } else if (res?.error) {
-        msg(res.error);
-      } else {
-        setStopMode(false);
+    
+  function declareFalseStop() {
+    socket.emit('declareFalseStop', {}, (res) => {
+      if (res?.error) msg(res.error);
+      else {
+        setPiouActive(true);
+        playSound('piou');
+        setTimeout(() => setPiouActive(false), 3000);
       }
     });
   }
-
-  function declareFalseStop() {
-    setStopMode(false);
-    socket.emit('declareFalseStop', {}, () => {
-      msg('😬 FALSE STOP — STOP button and discard pile are banned for you this round');
-    });
-  }
-
 function sortMeldCards(cards, type) {
     if (type === 'set') {
       const suitOrder = { spades: 0, hearts: 1, diamonds: 2, clubs: 3 };
@@ -438,108 +408,88 @@ function sortMeldCards(cards, type) {
     );
   }
 
-  // ── STOP MODE SCREEN ──────────────────────────────────────────────────────
-  if (stopMode) {
-    const usedIds   = stopMelds.flat().map(c => c.id);
-    const remaining = stopHand.filter(c => !usedIds.includes(c.id));
-    const canSubmit = remaining.length <= 1;
-
-    return (
-      <div style={{ minHeight:'100vh', background:'rgba(0,0,0,0.9)', display:'flex', flexDirection:'column', alignItems:'center', padding:24, gap:16 }}>
-
-        <div style={{ textAlign:'center' }}>
-          <h2 style={{ fontSize:26, marginBottom:4 }}>🛑 STOP!</h2>
-          <p style={{ opacity:0.7, fontSize:13 }}>1. Click a meld group to activate it &nbsp;→&nbsp; 2. Click cards to add them</p>
-          <div style={{ marginTop:6, fontSize:18, color: stopCountdown <= 10 ? '#e05050' : '#f0c040', fontWeight:700 }}>
-            ⏱ {stopCountdown}s
-          </div>
-        </div>
-
-        {/* Claimed discard card */}
-        <div style={{ textAlign:'center' }}>
-          <p style={{ fontSize:12, opacity:0.5, marginBottom:4 }}>Claimed discard:</p>
-          <div style={{ display:'inline-block', border:'3px solid #f0c040', borderRadius:8, padding:3 }}>
-            <Card card={claimedStopCard} />
-          </div>
-        </div>
-
-        {/* Meld groups */}
-        <div style={{ display:'flex', flexWrap:'wrap', gap:10, justifyContent:'center', width:'100%', maxWidth:860 }}>
-          {stopMelds.map((meld, i) => {
-            const isActive = activeMeld === i;
-            const valid = meld.length >= 3;
-            return (
-              <div key={i}
-                onClick={() => setActiveMeld(i)}
-                style={{ background: isActive ? 'rgba(240,192,64,0.15)' : 'rgba(255,255,255,0.05)',
-                  border: `2px solid ${isActive ? '#f0c040' : meld.length === 0 ? 'rgba(255,255,255,0.2)' : valid ? '#50c050' : '#e05050'}`,
-                  borderRadius:12, padding:12, minWidth:180, cursor:'pointer' }}>
-                <p style={{ fontSize:12, marginBottom:6, color: isActive ? '#f0c040' : 'rgba(255,255,255,0.6)' }}>
-                  {isActive ? '▶ ' : ''} Meld {i + 1} {meld.length > 0 && (valid ? '✅' : `(need ${3 - meld.length} more)`)}
-                </p>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:4, minHeight:80, alignItems:'center' }}>
-                  {meld.map(c => (
-                    <div key={c.id} title="Click to remove"
-                      onClick={e => { e.stopPropagation(); removeFromStopMeld(c); }}
-                      style={{ cursor:'pointer', opacity:0.9 }}>
-                      <Card card={c} medium />
-                    </div>
-                  ))}
-                  {meld.length === 0 && <p style={{ opacity:0.3, fontSize:12 }}>Click here to activate, then pick cards</p>}
-                </div>
-              </div>
-            );
-          })}
-          <div style={{ display:'flex', flexDirection:'column', gap:8, justifyContent:'center' }}>
-            <button onClick={() => { setStopMelds(p => [...p, []]); setActiveMeld(stopMelds.length); }}
-              style={{ padding:'10px 14px', background:'rgba(255,255,255,0.1)', color:'#fff',
-                border:'2px dashed rgba(255,255,255,0.3)', borderRadius:12, cursor:'pointer', fontSize:13 }}>
-              + New meld
-            </button>
-          </div>
-        </div>
-
-        {/* Remaining cards — click to add to active meld */}
-        <div style={{ width:'100%', maxWidth:860 }}>
-          <p style={{ fontSize:13, opacity:0.6, marginBottom:8 }}>
-            {remaining.length === 0 ? '✅ All assigned!' :
-             remaining.length === 1 ? '1 card left — will be discarded' :
-             `${remaining.length} cards — click one to add to Meld ${activeMeld + 1}:`}
-          </p>
-          <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
-            {remaining.map(card => (
-              <div key={card.id}
-                onClick={() => addToStopMeld(card, activeMeld)}
-                style={{ cursor:'pointer', transition:'transform 0.1s' }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-6px)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
-                <Card card={card} selected={card.id === topDiscard?.id} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ display:'flex', gap:12, flexWrap:'wrap', justifyContent:'center' }}>
-          <button className="btn-success"
-            onClick={submitStop} disabled={!canSubmit}
-            style={{ fontSize:16, padding:'12px 28px', opacity: canSubmit ? 1 : 0.4 }}>
-            ✅ Submit — I can win!
-          </button>
-          <button className="btn-danger" onClick={declareFalseStop}
-            style={{ fontSize:16, padding:'12px 28px' }}>
-            😬 I can't win (take penalty)
-          </button>
-        </div>
-
-        {message && <p style={{ color:'#ff8080', fontWeight:600 }}>{message}</p>}
-      </div>
-    );
-  }
-
-  // ── MAIN GAME SCREEN ──────────────────────────────────────────────────────
   // ── MAIN GAME SCREEN ──────────────────────────────────────────────────────
   return (
     <div style={{ display:'flex', flexDirection:'column', height:'100vh', overflow:'visible' }}>
+
+{/* PIOU flash */}
+      {piouActive && (
+        <div style={{
+          position:'fixed', top:0, left:0, right:0, bottom:0,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          zIndex:500, pointerEvents:'none',
+        }}>
+          <motion.div
+            initial={{ scale:0, rotate:-15 }}
+            animate={{ scale:1, rotate:0 }}
+            exit={{ scale:0 }}
+            transition={{ type:'spring', bounce:0.6 }}
+            style={{
+              background:'rgba(230,57,70,0.95)', color:'#fff',
+              fontFamily:"'Fredoka One',cursive",
+              fontSize:64, fontWeight:900, padding:'24px 48px',
+              borderRadius:30, textAlign:'center',
+              boxShadow:'0 8px 40px rgba(230,57,70,0.6)',
+            }}>
+            😤 PIOU!!!
+          </motion.div>
+        </div>
+      )}
+
+{/* ── STOP BANNER ── */}
+      {gameState.stopCalledBy && (
+        <motion.div
+          initial={{ y:-60 }}
+          animate={{ y:0 }}
+          style={{
+            position:'fixed', top:0, left:0, right:0, zIndex:200,
+            background:'linear-gradient(135deg, #e63946, #c0392b)',
+            padding:'10px 20px',
+            display:'flex', justifyContent:'space-between', alignItems:'center',
+            boxShadow:'0 4px 20px rgba(230,57,70,0.5)',
+          }}>
+          <div>
+            <div style={{ fontWeight:900, fontSize:16 }}>
+              🛑 {gameState.players.find(p => p.id === gameState.stopCalledBy)?.name} called STOP!
+            </div>
+            <div style={{ fontSize:12, opacity:0.85, marginTop:2 }}>
+              {gameState.stopCalledBy === roomInfo.playerId
+                ? 'Play all your cards to win! Use the normal game controls.'
+                : `Game frozen — waiting for ${gameState.players.find(p => p.id === gameState.stopCalledBy)?.name}`
+              }
+            </div>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <div style={{
+              fontFamily:"'Fredoka One',cursive",
+              fontSize:28,
+              color: stopCountdown <= 10 ? '#ffff80' : '#fff',
+            }}>
+              {stopCountdown}s
+            </div>
+            {gameState.stopCalledBy === roomInfo.playerId && (
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => emit('resetStop')} style={{
+                  background:'rgba(255,255,255,0.15)', color:'#fff',
+                  border:'1px solid rgba(255,255,255,0.4)',
+                  borderRadius:20, padding:'6px 14px',
+                  cursor:'pointer', fontSize:12, fontWeight:700,
+                }}>
+                  🔄 Reset
+                </button>
+                <button onClick={declareFalseStop} style={{
+                  background:'rgba(0,0,0,0.25)', color:'#fff',
+                  border:'1px solid rgba(255,255,255,0.4)',
+                  borderRadius:20, padding:'6px 14px',
+                  cursor:'pointer', fontSize:12, fontWeight:700,
+                }}>
+                  😤 Give up
+                </button>
+              </div>
+            )}
+          </div>
+        </motion.div>
+      )}
 
       {/* ── HEADER ── */}
       <div style={{
@@ -580,6 +530,7 @@ function sortMeldCards(cards, type) {
       }}>
         {others.map(p => {
           const isActive = currentPlayer?.id === p.id;
+
           return (
             <div key={p.id} style={{
               background: isActive ? 'rgba(244,165,34,0.12)' : 'rgba(0,0,0,0.28)',
@@ -588,7 +539,33 @@ function sortMeldCards(cards, type) {
               flex:1, minWidth:130, maxWidth:200,
               transition:'all 0.3s',
               boxShadow: isActive ? '0 0 20px rgba(244,165,34,0.2)' : 'none',
+              position:'relative',
             }}>
+              {piouActive && (
+                <motion.div
+                  initial={{ scale:0, y:10 }}
+                  animate={{ scale:1, y:0 }}
+                  exit={{ scale:0 }}
+                  style={{
+                    position:'absolute', top:-36, left:'50%',
+                    transform:'translateX(-50%)',
+                    background:'#fff', color:'#e63946',
+                    fontWeight:900, fontSize:13,
+                    padding:'4px 10px', borderRadius:20,
+                    whiteSpace:'nowrap', zIndex:50,
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
+                  }}>
+                  😤 PIOU!!!
+                  <div style={{
+                    position:'absolute', bottom:-6, left:'50%',
+                    transform:'translateX(-50%)',
+                    width:0, height:0,
+                    borderLeft:'6px solid transparent',
+                    borderRight:'6px solid transparent',
+                    borderTop:'6px solid #fff',
+                  }} />
+                </motion.div>
+              )}
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:5 }}>
                   <Avatar id={p.avatarId || 'sporty'} size={32} />
@@ -634,7 +611,18 @@ function sortMeldCards(cards, type) {
                   </div>
                 );
               })()}
-              {p.stopBanned && <div style={{ fontSize:10, color:'#ff8080', marginTop:3 }}>⚠️ STOP banned</div>}
+              {p.stopBanned && (
+                <motion.div
+                  initial={{ scale:0 }}
+                  animate={{ scale:1 }}
+                  style={{
+                    fontSize:11, fontWeight:900, color:'#ff8080', marginTop:3,
+                    background:'rgba(230,57,70,0.15)', padding:'2px 8px',
+                    borderRadius:20, textAlign:'center',
+                  }}>
+                  😤 PIOU!!!
+                </motion.div>
+              )}
             </div>
           );
         })}
@@ -718,13 +706,21 @@ function sortMeldCards(cards, type) {
                 DISCARD
               </p>
               <div style={{
-                cursor: isMyTurn&&phase==='draw' ? 'pointer' : 'default',
+                cursor: (!isMyTurn && phase==='draw' && !me?.stopBanned && !gameState.stopCalledBy) ? 'pointer' : (isMyTurn&&phase==='draw' ? 'pointer' : 'default'),
                 transform:'scale(1.3)', transformOrigin:'bottom center',
-                transition:'transform 0.2s',
+                transition:'all 0.2s',
+                filter: (!isMyTurn && phase==='draw' && !me?.stopBanned && topDiscard && !gameState.stopCalledBy)
+                  ? 'drop-shadow(0 0 8px rgba(230,57,70,0.9))'
+                  : 'none',
               }}
               onMouseEnter={e => { if(isMyTurn&&phase==='draw') e.currentTarget.style.transform='scale(1.4)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform='scale(1.15)'; }}
               onClick={() => {
+                // Not my turn + draw phase = STOP window → tap discard to STOP
+                if (!isMyTurn && phase === 'draw' && !me?.stopBanned && topDiscard && !gameState.stopCalledBy) {
+                  enterStopMode();
+                  return;
+                }
                 if (!isMyTurn) return;
                 if (phase === 'draw') emit('drawFromDiscard');
                 else if (phase === 'play' && selectedCards.length === 1) {
@@ -777,18 +773,6 @@ function sortMeldCards(cards, type) {
                 )}
               </>}
             </>}
-            {!isMyTurn && !me?.stopBanned && topDiscard && (
-              <motion.button className="btn-stop" onClick={enterStopMode}
-                animate={{ scale:[1, 1.06, 1], boxShadow:[
-                  '0 0 0px rgba(230,57,70,0)',
-                  '0 0 20px rgba(230,57,70,0.8)',
-                  '0 0 0px rgba(230,57,70,0)',
-                ]}}
-                transition={{ duration:1.5, repeat:Infinity, ease:'easeInOut' }}
-                whileTap={{ scale:0.92 }}>
-                🛑 STOP!
-              </motion.button>
-            )}
           </div>
         </div>
       </div>
@@ -804,17 +788,16 @@ function sortMeldCards(cards, type) {
             <span style={{ fontWeight:800, fontSize:14 }}>
               Your hand ({me?.hand?.length ?? 0})
             </span>
-            {me?.stopBanned && (
-              <span style={{ background:'rgba(230,57,70,0.25)', color:'#ff8080',
-                fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>
-                ⚠️ STOP banned
-              </span>
-            )}
-            {me?.discardBanned && (
-              <span style={{ background:'rgba(230,57,70,0.25)', color:'#ff8080',
-                fontSize:11, fontWeight:700, padding:'2px 8px', borderRadius:20 }}>
-                ⚠️ Discard banned
-              </span>
+            {(me?.stopBanned || me?.discardBanned) && (
+              <motion.span
+                initial={{ scale:0, rotate:-10 }}
+                animate={{ scale:1, rotate:0 }}
+                transition={{ type:'spring', bounce:0.6 }}
+                style={{ background:'rgba(230,57,70,0.85)', color:'#fff',
+                  fontSize:12, fontWeight:900, padding:'4px 12px', borderRadius:20,
+                  boxShadow:'0 2px 10px rgba(230,57,70,0.5)' }}>
+                😤 PIOU!!! STOP and discard banned this round!
+              </motion.span>
             )}
           </div>
           <span style={{ fontSize:12, color:'#f4a522', fontWeight:700 }}>

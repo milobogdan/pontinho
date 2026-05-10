@@ -25,6 +25,13 @@ function getRoomCode() {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
+function clearStopTimer(room) {
+  if (room.stopTimer) {
+    clearTimeout(room.stopTimer);
+    room.stopTimer = null;
+  }
+}
+
 // Broadcast updated game state to every player in the room
 // Each player only sees their own hand (unless debug mode is on)
 function broadcastGameState(room) {
@@ -38,6 +45,7 @@ function broadcastGameState(room) {
 const delay = ms => new Promise(r => setTimeout(r, ms));
 
 async function processBotTurn(room) {
+  if (room.game?.stopCalledBy) return; // Don't process bot turns during STOP
   if (!room.game || room.game.status !== 'playing') return;
   if (room.game.stopCalledBy) return;
   const current = room.game.players[room.game.currentPlayerIndex];
@@ -87,6 +95,7 @@ async function autoBotPick(room) {
 }
 
 async function checkBotStop(room) {
+  if (room.game?.stopCalledBy) return; // ← add this line
   if (!room.game || room.game.status !== 'playing') return;
   if (room.game.stopCalledBy) return;
 
@@ -260,23 +269,90 @@ io.on('connection', (socket) => {
     callback({ success: true });
   });
 
+ // ── INITIATE STOP ──────────────────────────────────────────────
   socket.on('initiateStop', ({ claimedCardId }, callback) => {
     const room = rooms[socket.data.roomCode];
     if (!room?.game) return callback({ error: 'No game' });
-    const result = initiateStop(room.game, socket.data.playerId, claimedCardId);
-    if (result.error) return callback(result);
-    broadcastGameState(room);
+
+    const game = room.game;
+    const playerId = socket.data.playerId;
+    const player = game.players.find(p => p.id === playerId);
+
+    if (!player) return callback({ error: 'Player not found' });
+    if (player.stopBanned) return callback({ error: 'You cannot use STOP this round' });
+    if (game.stopCalledBy) return callback({ error: 'STOP already in progress' });
+    if (game.discardPile.length === 0) return callback({ error: 'No discard card' });
+
+    const discardCard = game.discardPile.at(-1);
+    if (discardCard.id !== claimedCardId) return callback({ error: 'Discard card has changed' });
+
+    // Save original turn info so we can resume after false STOP
+    game.stopOriginalPlayerIndex = game.currentPlayerIndex;
+    game.stopOriginalPhase = game.turnPhase;
+    // Snapshot full state to restore on false STOP
+    game.stopSnapshot = {
+      hands: game.players.map(p => ({ id: p.id, hand: [...p.hand] })),
+      melds: JSON.parse(JSON.stringify(game.melds)),
+      discardPile: [...game.discardPile],
+    };
+    game.stopCalledBy = playerId;
+    game.stopDeadline = Date.now() + 120000;
+
+    // Add discard card to stopper's hand
+    game.discardPile.pop();
+    player.hand.push(discardCard);
+
+    // Give control to stopper
+    game.currentPlayerIndex = game.players.findIndex(p => p.id === playerId);
+    game.turnPhase = 'play';
+    game.pickedFromDiscard = true;
+    game.pickedDiscardCard = discardCard;
+
+    // Clear any existing stop timer
     if (room.stopTimer) clearTimeout(room.stopTimer);
+
+    // Start 120 second server-side timer
     room.stopTimer = setTimeout(() => {
-      if (room.game?.stopCalledBy === socket.data.playerId) {
-        const player = room.game.players.find(p => p.id === socket.data.playerId);
-        if (player) { player.stopBanned = true; player.discardBanned = true; }
-        resumeAfterStop(room.game);
-        broadcastGameState(room);
-        processBotTurn(room);
-        io.to(room.code).emit('stopTimeout', { playerId: socket.data.playerId });
+      if (!game.stopCalledBy) return; // Already resolved
+
+      // Apply false STOP penalty
+      player.stopBanned = true;
+      player.discardBanned = true;
+
+      // Restore game state to before STOP
+      if (game.stopSnapshot) {
+        game.stopSnapshot.hands.forEach(({ id, hand }) => {
+          const p = game.players.find(pl => pl.id === id);
+          if (p) p.hand = hand;
+        });
+        game.melds = game.stopSnapshot.melds;
+        game.discardPile = game.stopSnapshot.discardPile;
+        game.stopSnapshot = null;
       }
-    }, 60000); // ← 60 seconds
+      // Restore game state to before STOP
+      if (game.stopSnapshot) {
+        game.stopSnapshot.hands.forEach(({ id, hand }) => {
+          const p = game.players.find(pl => pl.id === id);
+          if (p) p.hand = hand;
+        });
+        game.melds = game.stopSnapshot.melds;
+        game.discardPile = game.stopSnapshot.discardPile;
+        game.stopSnapshot = null;
+      }
+      // Resume original player's turn
+      game.stopCalledBy = null;
+      game.stopDeadline = null;
+      game.currentPlayerIndex = game.stopOriginalPlayerIndex;
+      game.turnPhase = game.stopOriginalPhase || 'draw';
+      game.pickedFromDiscard = false;
+      game.pickedDiscardCard = null;
+      room.stopTimer = null;
+
+      broadcastGameState(room);
+      io.to(room.code).emit('stopTimeout');
+    }, 120000);
+
+    broadcastGameState(room);
     callback({ success: true });
   });
     
@@ -287,6 +363,8 @@ io.on('connection', (socket) => {
     const result = fn(room.game, socket.data.playerId, ...args);
     if (!result.error) {
       broadcastGameState(room);
+      // Clear stop timer if round ended (stopCalledBy was cleared by endRound)
+      if (!room.game.stopCalledBy) clearStopTimer(room);
       // After a discard, check if any bot can STOP
       if (fn === discardCard && room.game.status === 'playing') {
         setTimeout(() => checkBotStop(room), 300);
@@ -321,23 +399,82 @@ io.on('connection', (socket) => {
     if (!room?.game) return callback({ error: 'No active game' });
     startRound(room.game);
     broadcastGameState(room);
+    clearStopTimer(room);
     processBotTurn(room);
     callback({ success: true });
   });
 
-  // Player admits they can't win — apply penalty without needing server validation
-  socket.on('declareFalseStop', (_, callback) => {
+  // ── DECLARE FALSE STOP (stopper gives up) ──────────────────────
+  socket.on('declareFalseStop', (data, callback) => {
     const room = rooms[socket.data.roomCode];
-    if (!room?.game) return callback({ error: 'No game' });
-    const player = room.game.players.find(p => p.id === socket.data.playerId);
-    if (!player) return callback({ error: 'Player not found' });
+    if (!room?.game) return callback?.({ error: 'No game' });
+
+    const game = room.game;
+    const playerId = socket.data.playerId;
+
+    if (game.stopCalledBy !== playerId) return callback?.({ error: 'You did not call STOP' });
+
+    const player = game.players.find(p => p.id === playerId);
+
+    // Apply penalty
     player.stopBanned = true;
     player.discardBanned = true;
-    resumeAfterStop(room.game);
+
+    // Clear server timer
     if (room.stopTimer) { clearTimeout(room.stopTimer); room.stopTimer = null; }
+
+    // Restore game state to before STOP
+    if (game.stopSnapshot) {
+      game.stopSnapshot.hands.forEach(({ id, hand }) => {
+        const p = game.players.find(pl => pl.id === id);
+        if (p) p.hand = hand;
+      });
+      game.melds = game.stopSnapshot.melds;
+      game.discardPile = game.stopSnapshot.discardPile;
+      game.stopSnapshot = null;
+    }
+
+    // Resume original player's turn
+    game.stopCalledBy = null;
+    game.stopDeadline = null;
+    game.currentPlayerIndex = game.stopOriginalPlayerIndex;
+    game.turnPhase = game.stopOriginalPhase || 'draw';
+    game.pickedFromDiscard = false;
+    game.pickedDiscardCard = null;
+
     broadcastGameState(room);
-    processBotTurn(room); // resume bots
-    callback({ success: true });
+    processBotTurn(room);
+    callback?.({ success: true });
+  });
+
+  // ── RESET STOP (try different combination) ─────────────────────
+  socket.on('resetStop', (data, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room?.game) return callback?.({ error: 'No game' });
+
+    const game = room.game;
+    const playerId = socket.data.playerId;
+
+    if (game.stopCalledBy !== playerId) return callback?.({ error: 'You did not call STOP' });
+
+    // Restore hands and melds to snapshot but keep STOP active
+    if (game.stopSnapshot) {
+      game.stopSnapshot.hands.forEach(({ id, hand }) => {
+        const p = game.players.find(pl => pl.id === id);
+        if (p) p.hand = [...hand]; // fresh copy each time
+      });
+      game.melds = JSON.parse(JSON.stringify(game.stopSnapshot.melds));
+      game.discardPile = [...game.stopSnapshot.discardPile];
+    }
+
+    // Keep stopper in control
+    game.currentPlayerIndex = game.players.findIndex(p => p.id === playerId);
+    game.turnPhase = 'play';
+    game.pickedFromDiscard = true;
+    game.pickedDiscardCard = game.stopSnapshot?.discardPile?.at(-1) || null;
+
+    broadcastGameState(room);
+    callback?.({ success: true });
   });
 
   // ── GET CURRENT STATE (fixes race condition on load) ───────────────────
