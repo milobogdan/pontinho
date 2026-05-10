@@ -32,6 +32,7 @@ export default function Game({ roomInfo }) {
   const [newCardId, setNewCardId] = useState(null);
   const touchStartRef = useRef(null);
   const isDraggingRef = useRef(false);
+  const handContainerRef = useRef(null);
 
   useEffect(() => {
     if (!gameState) return;
@@ -151,6 +152,16 @@ export default function Game({ roomInfo }) {
     }
     prevIsMyTurnRef.current = myTurn;
   }, [gameState?.currentPlayerIndex, gameState?.status]);
+
+  useEffect(() => {
+    const el = handContainerRef.current;
+    if (!el) return;
+    const handler = e => {
+      if (isDraggingRef.current) e.preventDefault();
+    };
+    el.addEventListener('touchmove', handler, { passive: false });
+    return () => el.removeEventListener('touchmove', handler);
+  }, []);
 
   if (!gameState) return (
     <div style={{ display:'flex', alignItems:'center', justifyContent:'center', minHeight:'100vh' }}>
@@ -835,7 +846,7 @@ function sortMeldCards(cards, type) {
             {me?.totalScore ?? 0} pts
           </span>
         </div>
-        <div style={{ overflowX:'auto', paddingBottom:4 }}>
+        <div ref={handContainerRef} style={{ overflowX:'auto', paddingBottom:4 }}>
           <div style={{ display:'flex', gap:8, paddingTop:20 }}>
           {handOrder
             .map(id => me?.hand?.find(c => c.id===id))
@@ -881,7 +892,7 @@ function sortMeldCards(cards, type) {
                 initial={{ opacity:0, y:60, rotate: -5 }}
                 animate={{ opacity:1, y:0, rotate:0 }}
                 transition={{ duration:0.35, ease:'backOut' }}
-                style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab' }}>
+                style={{ opacity: draggedId===card.id ? 0.4 : 1, cursor:'grab', touchAction:'none' }}>
                 <div style={{
                   borderRadius:10,
                   boxShadow: newCardId === card.id ? '0 0 18px 4px rgba(46,134,193,0.85)' : 'none',
