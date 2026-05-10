@@ -861,6 +861,7 @@ function sortMeldCards(cards, type) {
                   touchStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
                   isDraggingRef.current = false;
                   setDraggedId(card.id);
+                  if (handContainerRef.current) handContainerRef.current.style.overflowX = 'hidden';
                 }}
                 onTouchMove={e => {
                   if (!touchStartRef.current) return;
@@ -881,6 +882,7 @@ function sortMeldCards(cards, type) {
                   }
                 }}
                 onTouchEnd={e => {
+                  if (handContainerRef.current) handContainerRef.current.style.overflowX = 'auto';
                   if (!isDraggingRef.current) {
                     e.preventDefault();
                     toggleCard(card.id);
