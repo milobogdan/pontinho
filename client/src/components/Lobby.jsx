@@ -1,3 +1,4 @@
+import { AvatarPicker, AVATAR_LIST } from './Avatar';
 import { useState, useEffect } from 'react';
 import socket from '../socket';
 
@@ -8,10 +9,11 @@ export default function Lobby({ onGameStart }) {
   // currentRoom: { code, playerId, players[], isHost }
   const [error, setError] = useState('');
   const [debugMode, setDebugMode] = useState(false);
+  const [avatarId, setAvatarId] = useState('sporty');
 
   function createRoom() {
     if (!playerName.trim()) return setError('Enter your name first');
-    socket.emit('createRoom', { playerName }, (res) => {
+    socket.emit('createRoom', { playerName, avatarId }, (res) => {
       if (res.error) return setError(res.error);
       setCurrentRoom({ code: res.code, playerId: res.playerId, players: [{ id: res.playerId, name: playerName }], isHost: true });
       setError('');
@@ -21,7 +23,7 @@ export default function Lobby({ onGameStart }) {
   function joinRoom() {
     if (!playerName.trim()) return setError('Enter your name first');
     if (!roomCode.trim()) return setError('Enter a room code');
-    socket.emit('joinRoom', { code: roomCode.toUpperCase(), playerName }, (res) => {
+    socket.emit('joinRoom', { code: roomCode.toUpperCase(), playerName, avatarId }, (res) => {
       if (res.error) return setError(res.error);
       setCurrentRoom({ 
         code: roomCode.toUpperCase(), 
@@ -51,12 +53,14 @@ export default function Lobby({ onGameStart }) {
     });
 
     socket.on('gameStarted', () => {
-      setCurrentRoom(prev => {
-        if (prev) {
-          onGameStart({ code: prev.code, playerId: prev.playerId, playerName });
-        }
-        return prev;
-      });
+      setTimeout(() => {
+        setCurrentRoom(prev => {
+          if (prev) {
+            onGameStart({ code: prev.code, playerId: prev.playerId, playerName });
+          }
+          return prev;
+        });
+      }, 0);
     });
 
     return () => {
@@ -69,6 +73,7 @@ export default function Lobby({ onGameStart }) {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: 24 }}>
       <h1 style={{ fontSize: 36, marginBottom: 8 }}>🃏 Card Game</h1>
       <div style={{ background: 'rgba(0,0,0,0.3)', padding: 32, borderRadius: 16, width: 360, display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <AvatarPicker selected={avatarId} onSelect={setAvatarId} />
         <input placeholder="Your name" value={playerName} onChange={e => setPlayerName(e.target.value)} />
         <button className="btn-primary" onClick={createRoom}>Create Room</button>
         <hr style={{ borderColor: 'rgba(255,255,255,0.2)' }} />

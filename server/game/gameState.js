@@ -28,6 +28,8 @@ export function createGame(playerInfos) {
       id: p.id,
       name: p.name,
       isBot: p.isBot || false,
+      difficulty: p.difficulty || null,
+      avatarId: p.avatarId || 'sporty',
       hand: [],
       totalScore: 0,
       hasExploded: false,

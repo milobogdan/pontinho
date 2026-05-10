@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
 import socket from '../socket';
 import Card from './Card';
+import { Avatar, randomBotAvatar } from './Avatar';
 
 function playSound(type) {
   const files = {
@@ -590,8 +591,12 @@ function sortMeldCards(cards, type) {
             }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
                 <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                  <span style={{ fontSize:15 }}>{p.isBot ? '🤖' : '👤'}</span>
-                  <span style={{ fontWeight:800, fontSize:12 }}>
+                  <Avatar id={p.avatarId || 'sporty'} size={32} />
+                  <span style={{ fontWeight:800, fontSize:12,
+                    color: !p.isBot ? '#fff' :
+                      p.difficulty === 'easy' ? '#4caf50' :
+                      p.difficulty === 'medium' ? '#f4a522' : '#e63946'
+                  }}>
                     {p.name}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
                   </span>
                 </div>

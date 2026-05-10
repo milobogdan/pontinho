@@ -150,13 +150,13 @@ io.on('connection', (socket) => {
   console.log('Connected:', socket.id);
 
   // ── CREATE ROOM ────────────────────────────────────────────────
-  socket.on('createRoom', ({ playerName }, callback) => {
+  socket.on('createRoom', ({ playerName, avatarId }, callback) => {
     const code = getRoomCode();
     const playerId = socket.id;
 
     rooms[code] = {
       code,
-      players: [{ id: playerId, socketId: socket.id, name: playerName }],
+      players: [{ id: playerId, socketId: socket.id, name: playerName, avatarId: avatarId || 'sporty' }],
       game: null,
       debugMode: false,
     };
@@ -170,14 +170,14 @@ io.on('connection', (socket) => {
   });
 
   // ── JOIN ROOM ──────────────────────────────────────────────────
-  socket.on('joinRoom', ({ code, playerName }, callback) => {
+  socket.on('joinRoom', ({ code, playerName, avatarId }, callback) => {
     const room = rooms[code];
     if (!room) return callback({ error: 'Room not found' });
     if (room.game?.status === 'playing') return callback({ error: 'Game already in progress' });
     if (room.players.length >= 8) return callback({ error: 'Room is full (max 8 players)' });
 
     const playerId = socket.id;
-    room.players.push({ id: playerId, socketId: socket.id, name: playerName });
+    room.players.push({ id: playerId, socketId: socket.id, name: playerName, avatarId: avatarId || 'sporty' });
 
     socket.join(code);
     socket.data.roomCode = code;
@@ -197,10 +197,25 @@ io.on('connection', (socket) => {
     if (room.players.length >= 8) return callback({ error: 'Room is full' });
 
     const botId = `bot-${Date.now()}`;
-    const botName = `Bot (${difficulty})`;
-    room.players.push({ id: botId, socketId: null, name: botName, isBot: true, difficulty });
+    const BOT_NAMES = [
+      'Ana', 'Leo', 'Bia', 'Kai', 'Gio', 'Mia', 'Tom', 'Zoe',
+      'Max', 'Lia', 'Ben', 'Ava', 'Ryu', 'Ivy', 'Sam', 'Noa',
+      'Lou', 'Eva', 'Rex', 'Sky', 'Rio', 'Ada', 'Jay', 'Lua',
+    ];
+    const usedNames = room.players.map(p => p.name);
+    const available = BOT_NAMES.filter(n => !usedNames.includes(n));
+    const AVATAR_IDS = ['sporty','nerdy','cool','grandpa','kid','curly','ponytail','grandma','business','pigtails'];
+    const usedAvatars = room.players.map(p => p.avatarId).filter(Boolean);
+    const availableAvatars = AVATAR_IDS.filter(id => !usedAvatars.includes(id));
+    const botAvatarId = availableAvatars.length > 0
+      ? availableAvatars[Math.floor(Math.random() * availableAvatars.length)]
+      : AVATAR_IDS[Math.floor(Math.random() * AVATAR_IDS.length)];
+    const botName = available.length > 0
+      ? available[Math.floor(Math.random() * available.length)]
+      : `Bot${room.players.length}`;
+    room.players.push({ id: botId, socketId: null, name: botName, isBot: true, difficulty, avatarId: botAvatarId });
 
-    io.to(room.code).emit('playerList', room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot })));
+    io.to(room.code).emit('playerList', room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot, difficulty: p.difficulty })));
     callback({ success: true, botId });
   });
 
@@ -219,7 +234,7 @@ io.on('connection', (socket) => {
     if (room.players.length < 2) return callback({ error: 'Need at least 2 players' });
 
     room.game = createGame(room.players.map(p => ({
-      id: p.id, name: p.name, isBot: p.isBot || false,
+      id: p.id, name: p.name, isBot: p.isBot || false, difficulty: p.difficulty || null, avatarId: p.avatarId || 'sporty',
     })));
 
     startPicking(room.game);
