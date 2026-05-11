@@ -395,83 +395,106 @@ function sortMeldCards(cards, type) {
     const revealed = gameState.pickingRevealed;
     const winner   = gameState.players.find(p => p.id === gameState.pickingWinnerId);
     return (
-      <div style={{ minHeight:'100vh', display:'flex', flexDirection:'column',
-        alignItems:'center', justifyContent:'center', gap:20, padding:24,
-        background:'radial-gradient(ellipse at 50% 30%, #1e6b42 0%, #0d3b22 100%)' }}>
+      <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }}
+        style={{ minHeight:'100vh', display:'flex', flexDirection:'column',
+          alignItems:'center', justifyContent:'center', gap:28, padding:'24px 16px',
+          background:'radial-gradient(ellipse at 50% 30%, #1e6b42 0%, #0d3b22 100%)' }}>
 
-        <div style={{ textAlign:'center' }}>
-          <div style={{ fontSize:52, marginBottom:8 }}>🃏</div>
-          <h2 style={{ fontFamily:"'Fredoka One',cursive", fontSize:38, marginBottom:6 }}>Pick a card!</h2>
-          <p style={{ opacity:0.6, fontSize:14 }}>Highest card = dealer · Player to the left goes first</p>
-          <p style={{ opacity:0.4, fontSize:12, marginTop:4 }}>Ties: ♠ &gt; ♥ &gt; ♦ &gt; ♣</p>
-        </div>
+        {/* Header */}
+        <motion.div initial={{ y:-24, opacity:0 }} animate={{ y:0, opacity:1 }}
+          transition={{ delay:0.1 }} style={{ textAlign:'center' }}>
+          <div style={{ fontSize:44, marginBottom:6 }}>🎴</div>
+          <h2 style={{ fontFamily:"'Fredoka One',cursive", fontSize:34, marginBottom:4 }}>
+            {revealed ? `${winner?.name ?? 'Someone'} deals!` : 'Pick a card!'}
+          </h2>
+          {!revealed && <>
+            <p style={{ opacity:0.55, fontSize:14 }}>Highest card deals · Left player goes first</p>
+            <p style={{ opacity:0.3, fontSize:12, marginTop:2 }}>Ties: ♠ &gt; ♥ &gt; ♦ &gt; ♣</p>
+          </>}
+        </motion.div>
 
-        <div style={{ display:'flex', flexWrap:'wrap', gap:8, justifyContent:'center', maxWidth:860 }}>
-          {(gameState.pickingCards || []).map(card => {
+        {/* Cards — overlapping fan */}
+        <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-end', paddingTop:30 }}>
+          {(gameState.pickingCards || []).map((card, idx) => {
             const pickedEntry = Object.entries(gameState.playerPicks || {}).find(([,c]) => c?.id === card.id);
             const isTaken  = !!pickedEntry;
             const pickedBy = pickedEntry ? gameState.players.find(p => p.id === pickedEntry[0]) : null;
             const isMyPick = myPick?.id === card.id;
+            const isWinner = revealed && card.id === gameState.playerPicks?.[gameState.pickingWinnerId]?.id;
+            const canPick  = !myPick && !isTaken;
+            const TILTS    = [-13, 8, -17, 5, 14, -7, 11, -4, 16, -10, 6, -15, 9, -3, 12, -8];
+            const tilt     = TILTS[idx % TILTS.length];
             return (
-              <div key={card.id} style={{ textAlign:'center' }}>
-                <div onClick={() => !myPick && !isTaken && socket.emit('pickCard', { cardId: card.id }, () => {})}
-                  style={{ cursor: !myPick && !isTaken ? 'pointer' : 'default',
-                    opacity: isTaken && !isMyPick ? 0.4 : 1,
-                    transform: isMyPick ? 'translateY(-14px)' : 'none',
-                    transition:'all 0.3s' }}
-                  onMouseEnter={e => { if(!myPick && !isTaken) e.currentTarget.style.transform='translateY(-8px)'; }}
-                  onMouseLeave={e => { if(!isMyPick) e.currentTarget.style.transform='none'; }}>
-                  <Card card={revealed ? card : { hidden:true }} />
-                </div>
+              <motion.div key={card.id}
+                initial={{ y:-40, opacity:0 }}
+                animate={{
+                  opacity: 1,
+                  y: isMyPick ? -22 : 0,
+                  rotate: isTaken ? 0 : tilt,
+                  zIndex: isMyPick ? 100 : isTaken ? 50 : idx,
+                }}
+                whileHover={canPick ? { y:-14, rotate:0, zIndex:200 } : {}}
+                transition={{ duration:0.3, delay: idx * 0.04 }}
+                style={{
+                  marginLeft: idx === 0 ? 0 : -28,
+                  cursor: canPick ? 'pointer' : 'default',
+                  position:'relative',
+                  transformOrigin:'bottom center',
+                  filter: isWinner
+                    ? 'drop-shadow(0 0 14px rgba(244,165,34,1)) drop-shadow(0 0 28px rgba(244,165,34,0.5))'
+                    : isMyPick ? 'drop-shadow(0 0 10px rgba(244,165,34,0.8))' : 'none',
+                }}
+                onClick={() => canPick && socket.emit('pickCard', { cardId:card.id }, () => {})}>
+                <Card card={isTaken ? card : { hidden:true }} />
                 {pickedBy && (
-                  <p style={{ fontSize:11, marginTop:4, fontWeight:700,
-                    color: isMyPick ? '#f4a522' : 'rgba(255,255,255,0.6)' }}>
-                    {isMyPick ? '⭐ ' : ''}{pickedBy.name}
-                  </p>
+                  <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }}
+                    style={{ marginTop:6, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
+                    <Avatar id={pickedBy.avatarId} size={26} />
+                    <p style={{ fontSize:10, fontWeight:700, whiteSpace:'nowrap',
+                      color: isMyPick || isWinner ? '#f4a522' : 'rgba(255,255,255,0.65)' }}>
+                      {isWinner ? '👑 ' : ''}{pickedBy.name}
+                    </p>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
 
-        {!myPick && !revealed && <p style={{ opacity:0.6, fontStyle:'italic' }}>👆 Click any card to flip it</p>}
-        {myPick && !revealed && (
-          <div style={{ background:'rgba(244,165,34,0.15)', border:'1px solid rgba(244,165,34,0.4)',
-            borderRadius:12, padding:'10px 24px' }}>
-            <p style={{ color:'#f4a522', fontWeight:700 }}>✅ Picked! Waiting for others...</p>
-          </div>
-        )}
+        {/* Status */}
+        <AnimatePresence mode="wait">
+          {!myPick && !revealed && (
+            <motion.p key="hint" initial={{ opacity:0 }} animate={{ opacity:0.6 }} exit={{ opacity:0 }}
+              style={{ fontStyle:'italic', fontSize:14 }}>
+              Tap any card to pick it
+            </motion.p>
+          )}
+          {myPick && !revealed && (
+            <motion.div key="waiting" initial={{ opacity:0, scale:0.9 }} animate={{ opacity:1, scale:1 }} exit={{ opacity:0 }}
+              style={{ background:'rgba(244,165,34,0.12)', border:'1px solid rgba(244,165,34,0.35)',
+                borderRadius:14, padding:'12px 28px', textAlign:'center' }}>
+              <p style={{ color:'#f4a522', fontWeight:700, fontSize:15 }}>Card picked!</p>
+              <p style={{ opacity:0.5, fontSize:12, marginTop:2 }}>Waiting for others...</p>
+            </motion.div>
+          )}
+          {revealed && winner && (
+            <motion.div key="winner" initial={{ opacity:0, y:20, scale:0.9 }}
+              animate={{ opacity:1, y:0, scale:1 }} transition={{ delay:0.3, type:'spring', bounce:0.4 }}
+              style={{ background:'rgba(244,165,34,0.15)', border:'2px solid #f4a522',
+                borderRadius:20, padding:'20px 36px', textAlign:'center' }}>
+              <div style={{ fontSize:30, marginBottom:4 }}>👑</div>
+              <h3 style={{ fontFamily:"'Fredoka One',cursive", fontSize:24, color:'#f4a522', marginBottom:4 }}>
+                {winner.name} deals!
+              </h3>
+              <p style={{ opacity:0.8, fontSize:14 }}>
+                <strong>{gameState.players[gameState.startingPlayerIndex]?.name}</strong> goes first
+              </p>
+              <p style={{ opacity:0.35, fontSize:12, marginTop:8 }}>Starting in 3 seconds...</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        {revealed && winner && (
-          <div style={{ textAlign:'center', background:'rgba(244,165,34,0.15)',
-            border:'2px solid #f4a522', padding:24, borderRadius:20, maxWidth:380, width:'100%' }}>
-            <div style={{ fontSize:36, marginBottom:8 }}>🎴</div>
-            <h3 style={{ fontFamily:"'Fredoka One',cursive", fontSize:26, color:'#f4a522', marginBottom:6 }}>
-              {winner.name} is the dealer!
-            </h3>
-            <p style={{ opacity:0.8 }}>▶ <strong>{gameState.players[gameState.startingPlayerIndex]?.name}</strong> goes first</p>
-            <p style={{ opacity:0.4, fontSize:13, marginTop:6 }}>Starting in 3 seconds...</p>
-          </div>
-        )}
-
-        {revealed && (
-          <div style={{ display:'flex', gap:20, flexWrap:'wrap', justifyContent:'center' }}>
-            {gameState.players.map(p => {
-              const pick = gameState.playerPicks?.[p.id];
-              if (!pick) return null;
-              return (
-                <div key={p.id} style={{ textAlign:'center' }}>
-                  <p style={{ fontSize:13, marginBottom:8, fontWeight:700,
-                    color: p.id === gameState.pickingWinnerId ? '#f4a522' : 'rgba(255,255,255,0.7)' }}>
-                    {p.id === gameState.pickingWinnerId ? '👑 ' : ''}{p.name}
-                  </p>
-                  <Card card={pick} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      </motion.div>
     );
   }
 
