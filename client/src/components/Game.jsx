@@ -25,7 +25,7 @@ function playSound(type) {
   audio.play().catch(() => {});
 }
 
-export default function Game({ roomInfo }) {
+export default function Game({ roomInfo, onLeave }) {
   const [gameState, setGameState] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
   const [message, setMessage]     = useState('');
@@ -605,18 +605,30 @@ function sortMeldCards(cards, type) {
           ))}
         </div>
 
-        {!isGameOver && (
+        <div style={{ display:'flex', gap:14, flexWrap:'wrap', justifyContent:'center' }}>
+          {!isGameOver && (
+            <motion.button className="btn-primary"
+              initial={{ opacity:0, y:20 }}
+              animate={{ opacity:1, y:0 }}
+              transition={{ delay:0.6, duration:0.4, ease:'backOut' }}
+              whileHover={{ scale:1.05 }}
+              whileTap={{ scale:0.95 }}
+              style={{ fontSize:18, padding:'14px 36px' }}
+              onClick={() => emit('startNextRound')}>
+              Next Round →
+            </motion.button>
+          )}
           <motion.button className="btn-primary"
             initial={{ opacity:0, y:20 }}
             animate={{ opacity:1, y:0 }}
-            transition={{ delay:0.6, duration:0.4, ease:'backOut' }}
+            transition={{ delay: isGameOver ? 0.6 : 0.7, duration:0.4, ease:'backOut' }}
             whileHover={{ scale:1.05 }}
             whileTap={{ scale:0.95 }}
             style={{ fontSize:18, padding:'14px 36px' }}
-            onClick={() => emit('startNextRound')}>
-            Next Round →
+            onClick={onLeave}>
+            Back to Home
           </motion.button>
-        )}
+        </div>
       </motion.div>
     );
   }

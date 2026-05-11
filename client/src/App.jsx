@@ -282,7 +282,7 @@ export default function App() {
   return (
     <div className="app">
       {screen === 'lobby' && <Lobby onGameStart={onGameStart} />}
-      {screen === 'game'  && <Game roomInfo={roomInfo} />}
+      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => setScreen('splash')} />}
     </div>
   );
 }
