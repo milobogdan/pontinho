@@ -783,24 +783,40 @@ function sortMeldCards(cards, type) {
                 <p style={{ fontSize:10, opacity:0.45, marginBottom:5, whiteSpace:'nowrap' }}>
                   {meld.type} · {gameState.players.find(p=>p.id===meld.ownerId)?.name}
                 </p>
-                <div style={{ display:'flex', gap:3, alignItems:'center' }}>
-                  {sortMeldCards(meld.cards, meld.type).map(c => (
-                    <motion.div key={c.id}
-                     initial={{ opacity:0, scale:0.5, y:-20 }}
-                     animate={{ opacity:1, scale:1, y:0 }}
-                     transition={{ duration:0.3, ease:'backOut' }}
-                     onClick={() => {
-                      if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
-                      if (c.isJoker && selectedCards.length === 1) {
-                        emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
-                      } else {
-                        emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
-                      }
-                    }}>
-                      <Card card={c} medium />
-                    </motion.div>
-                  ))}
-                </div>
+                {(() => {
+                  const isMobile = window.innerWidth < 600;
+                  const sorted = sortMeldCards(meld.cards, meld.type);
+                  const cardW = 48, cardH = 68;
+                  const useOverlap = isMobile && sorted.length > 5;
+                  const step = useOverlap
+                    ? Math.floor((180 - cardW) / (sorted.length - 1))
+                    : null;
+                  const containerW = useOverlap ? step * (sorted.length - 1) + cardW : null;
+                  return (
+                    <div style={useOverlap
+                      ? { position:'relative', width:containerW, height:cardH, flexShrink:0 }
+                      : { display:'flex', gap:3, alignItems:'center' }
+                    }>
+                      {sorted.map((c, i) => (
+                        <motion.div key={c.id}
+                          initial={{ opacity:0, scale:0.5, y:-20 }}
+                          animate={{ opacity:1, scale:1, y:0 }}
+                          transition={{ duration:0.3, ease:'backOut' }}
+                          style={useOverlap ? { position:'absolute', left: i * step, zIndex: i } : {}}
+                          onClick={() => {
+                            if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
+                            if (c.isJoker && selectedCards.length === 1) {
+                              emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
+                            } else {
+                              emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
+                            }
+                          }}>
+                          <Card card={c} medium />
+                        </motion.div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
