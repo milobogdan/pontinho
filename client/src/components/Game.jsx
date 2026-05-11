@@ -889,11 +889,11 @@ function sortMeldCards(cards, type) {
                   const isMobile = window.innerWidth < 600;
                   const sorted = sortMeldCards(meld.cards, meld.type);
                   const cardW = 48, cardH = 68;
-                  const useOverlap = isMobile && sorted.length > 5;
-                  const step = useOverlap
-                    ? Math.floor((180 - cardW) / (sorted.length - 1))
+                  const useOverlap = isMobile;
+                  const step = useOverlap && sorted.length > 1
+                    ? Math.min(38, Math.floor((180 - cardW) / (sorted.length - 1)))
                     : null;
-                  const containerW = useOverlap ? step * (sorted.length - 1) + cardW : null;
+                  const containerW = useOverlap ? (sorted.length === 1 ? cardW : step * (sorted.length - 1) + cardW) : null;
                   return (
                     <div style={useOverlap
                       ? { position:'relative', width:containerW, height:cardH, flexShrink:0 }
