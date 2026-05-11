@@ -1031,7 +1031,7 @@ function sortMeldCards(cards, type) {
                     animate={{
                       opacity:1,
                       x: i * offset,
-                      y: isSelected ? -20 : isFeatured ? -16 : 0,
+                      y: isSelected ? -20 : 0,
                       scale: 1,
                       zIndex: isSelected ? 100 : isFeatured ? 200 : i,
                     }}
@@ -1039,9 +1039,7 @@ function sortMeldCards(cards, type) {
                     style={{
                       position:'absolute', top:0, left:0,
                       zIndex: isSelected ? 100 : isFeatured ? 200 : i,
-                      filter: isFeatured
-                        ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
-                        : isNew ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                      filter: isNew && !isFeatured ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
                       touchAction:'none',
                     }}
                     onTouchStart={e => {
@@ -1074,7 +1072,7 @@ function sortMeldCards(cards, type) {
                       isDraggingRef.current = false;
                       touchStartRef.current = null;
                     }}>
-                    <Card card={card} selected={isSelected} />
+                    <Card card={card} selected={isSelected || isFeatured} />
                   </motion.div>
                 );
               })}
@@ -1094,19 +1092,17 @@ function sortMeldCards(cards, type) {
                       onDragOver={e => onDragOver(e, card.id)}
                       onDragEnd={() => setDraggedId(null)}
                       initial={{ opacity:0, y:60, rotate:-5 }}
-                      animate={{ opacity:1, y: isFeatured ? -28 : 0, scale: isFeatured ? 1.5 : 1, rotate:0 }}
+                      animate={{ opacity:1, y:0, scale:1, rotate:0 }}
                       transition={{ duration:0.35, ease:'backOut' }}
                       style={{
                         opacity: draggedId===card.id ? 0.4 : 1,
                         cursor:'grab',
                         position: isFeatured ? 'relative' : 'static',
                         zIndex: isFeatured ? 200 : 'auto',
-                          filter: isFeatured
-                          ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
-                          : newCardId===card.id ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                        filter: newCardId===card.id && !isFeatured ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
                       }}>
                       <Card card={card}
-                        selected={selectedCards.includes(card.id)}
+                        selected={selectedCards.includes(card.id) || isFeatured}
                         onClick={() => toggleCard(card.id)} />
                     </motion.div>
                   );
