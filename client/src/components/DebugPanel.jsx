@@ -72,6 +72,12 @@ const SCENARIOS = [
     }],
   },
   {
+    name: '🃏 First turn Joker',
+    desc: 'You are first player, drew a Joker — must keep it',
+    hand: [{ id:'d1', isJoker:true, rank:'JOKER', suit:null, value:50 }],
+    phase: 'firstKeepOrDiscard',
+  },
+  {
     name: '💥 One card left',
     desc: 'Only Joker in hand',
     hand: [{ id:'d1', isJoker:true, rank:'JOKER', value:50 }],
@@ -164,7 +170,7 @@ export default function DebugPanel({ gameState, roomInfo }) {
     if (scenario.hand)    payload.hand    = scenario.hand;
     if (scenario.discard) payload.discardCard = scenario.discard;
     if (scenario.melds)   payload.melds   = scenario.melds;
-    payload.phase = 'play';
+    payload.phase = scenario.phase ?? 'play';
     socket.emit('debugSetState', payload, (res) => {
       if (res?.error) showMsg(`❌ ${res.error}`);
       else showMsg(`✅ Scenario loaded!`);

@@ -37,6 +37,10 @@ export default function Game({ roomInfo }) {
   const touchStartRef = useRef(null);
   const isDraggingRef = useRef(false);
   const handContainerRef = useRef(null);
+  const prevTurnPhaseRef = useRef(null);
+  const drawPileRef = useRef(null);
+  const discardPileRef = useRef(null);
+  const [flyAnim, setFlyAnim] = useState(null); // { fromX, fromY, toX, toY, hidden }
   const [disconnectInfo, setDisconnectInfo] = useState(null);
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
   const [isMuted, setIsMuted] = useState(false);
@@ -62,13 +66,38 @@ export default function Game({ roomInfo }) {
         }).map(c => c.id);
       }
 
-      // Single card drawn → append at end with blue glow
+      // Single card drawn → append at end with blue glow + fly animation
       if (newOnes.length === 1) {
-        setTimeout(() => setNewCardId(newOnes[0]), 50);
-        setTimeout(() => setNewCardId(null), 2000);
+        const cardId = newOnes[0];
+        setTimeout(() => setNewCardId(cardId), 50);
+        if (gameState?.turnPhase !== 'firstKeepOrDiscard') {
+          setTimeout(() => setNewCardId(null), 2000);
+        }
+        // Fly card from draw pile toward hand
+        if (drawPileRef.current) {
+          const r = drawPileRef.current.getBoundingClientRect();
+          setFlyAnim({
+            fromX: r.left + r.width / 2,
+            fromY: r.top + r.height / 2,
+            toX: window.innerWidth / 2,
+            toY: window.innerHeight - 80,
+            hidden: true,
+          });
+          setTimeout(() => setFlyAnim(null), 450);
+        }
       }
       return [...kept, ...newOnes];
     });
+  }, [gameState]);
+
+  // Clear the featured highlight the moment we leave firstKeepOrDiscard
+  useEffect(() => {
+    if (!gameState) return;
+    const phase = gameState.turnPhase;
+    if (prevTurnPhaseRef.current === 'firstKeepOrDiscard' && phase !== 'firstKeepOrDiscard') {
+      setNewCardId(null);
+    }
+    prevTurnPhaseRef.current = phase;
   }, [gameState]);
 
   useEffect(() => {
@@ -184,6 +213,7 @@ export default function Game({ roomInfo }) {
     const myTurn = gameState?.players?.[gameState?.currentPlayerIndex]?.id === roomInfo.playerId;
     if (myTurn && !prevIsMyTurnRef.current && gameState?.status === 'playing') {
       playSound('turn');
+      navigator.vibrate?.(200);
     }
     prevIsMyTurnRef.current = myTurn;
   }, [gameState?.currentPlayerIndex, gameState?.status]);
@@ -233,7 +263,20 @@ export default function Game({ roomInfo }) {
   function msg(text) { setMessage(text); setTimeout(() => setMessage(''), 3000); }
 
   function emit(event, data = {}) {
-    if (event === 'discardCard') playSound('discard');
+    if (event === 'discardCard') {
+      playSound('discard');
+      if (discardPileRef.current) {
+        const r = discardPileRef.current.getBoundingClientRect();
+        setFlyAnim({
+          fromX: window.innerWidth / 2,
+          fromY: window.innerHeight - 120,
+          toX: r.left + r.width / 2,
+          toY: r.top + r.height / 2,
+          hidden: false,
+        });
+        setTimeout(() => setFlyAnim(null), 400);
+      }
+    }
     socket.emit(event, data, (res) => {
       if (res?.error) {
         if (res.error === 'No active game') {
@@ -780,9 +823,6 @@ function sortMeldCards(cards, type) {
                 padding:'8px 10px', flexShrink:0,
                 border:'1px solid rgba(255,255,255,0.08)',
               }}>
-                <p style={{ fontSize:10, opacity:0.45, marginBottom:5, whiteSpace:'nowrap' }}>
-                  {meld.type} · {gameState.players.find(p=>p.id===meld.ownerId)?.name}
-                </p>
                 {(() => {
                   const isMobile = window.innerWidth < 600;
                   const sorted = sortMeldCards(meld.cards, meld.type);
@@ -833,7 +873,7 @@ function sortMeldCards(cards, type) {
               <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:16 }}>
                 DRAW ({gameState.drawPile.length})
               </p>
-              <div style={{
+              <div ref={drawPileRef} style={{
                 cursor: isMyTurn&&(phase==='draw'||phase==='firstDraw') ? 'pointer' : 'default',
                 transform:'scale(1.3)', transformOrigin:'bottom center',
                 transition:'transform 0.2s',
@@ -853,7 +893,7 @@ function sortMeldCards(cards, type) {
               <p style={{ fontSize:11, fontWeight:700, opacity:0.45, letterSpacing:1, marginBottom:16 }}>
                 DISCARD
               </p>
-              <div style={{
+              <div ref={discardPileRef} style={{
                 cursor: (!isMyTurn && phase==='draw' && !me?.stopBanned && !gameState.stopCalledBy) ? 'pointer' : (isMyTurn&&phase==='draw' ? 'pointer' : 'default'),
                 transform:'scale(1.3)', transformOrigin:'bottom center',
                 transition:'all 0.2s',
@@ -982,6 +1022,7 @@ function sortMeldCards(cards, type) {
               {orderedHand.map((card, i) => {
                 const isSelected = selectedCards.includes(card.id);
                 const isNew = newCardId === card.id;
+                const isFeatured = isNew && phase === 'firstKeepOrDiscard' && isMyTurn;
                 return (
                   <motion.div
                     key={card.id}
@@ -990,14 +1031,18 @@ function sortMeldCards(cards, type) {
                     animate={{
                       opacity:1,
                       x: i * offset,
-                      y: isSelected ? -20 : 0,
-                      zIndex: isSelected ? 100 : i,
+                      y: isSelected ? -20 : isFeatured ? -16 : 0,
+                      scale: isFeatured ? 1.25 : 1,
+                      zIndex: isSelected ? 100 : isFeatured ? 200 : i,
                     }}
                     transition={{ duration:0.2 }}
                     style={{
                       position:'absolute', top:0, left:0,
-                      zIndex: isSelected ? 100 : i,
-                      filter: isNew ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                      zIndex: isSelected ? 100 : isFeatured ? 200 : i,
+                      transformOrigin: 'bottom center',
+                      filter: isFeatured
+                        ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
+                        : isNew ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
                       touchAction:'none',
                     }}
                     onTouchStart={e => {
@@ -1041,25 +1086,33 @@ function sortMeldCards(cards, type) {
           return (
             <div ref={handContainerRef} style={{ overflowX:'auto', overflowY:'hidden', paddingBottom:4 }}>
               <div style={{ display:'flex', gap:8, paddingTop:20, justifyContent:'center', flexWrap:'wrap' }}>
-                {orderedHand.map(card => (
-                  <motion.div key={card.id} draggable
-                    data-cardid={card.id}
-                    onDragStart={() => setDraggedId(card.id)}
-                    onDragOver={e => onDragOver(e, card.id)}
-                    onDragEnd={() => setDraggedId(null)}
-                    initial={{ opacity:0, y:60, rotate:-5 }}
-                    animate={{ opacity:1, y:0, rotate:0 }}
-                    transition={{ duration:0.35, ease:'backOut' }}
-                    style={{
-                      opacity: draggedId===card.id ? 0.4 : 1,
-                      cursor:'grab',
-                      filter: newCardId===card.id ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
-                    }}>
-                    <Card card={card}
-                      selected={selectedCards.includes(card.id)}
-                      onClick={() => toggleCard(card.id)} />
-                  </motion.div>
-                ))}
+                {orderedHand.map(card => {
+                  const isFeatured = newCardId === card.id && phase === 'firstKeepOrDiscard' && isMyTurn;
+                  return (
+                    <motion.div key={card.id} draggable
+                      data-cardid={card.id}
+                      onDragStart={() => setDraggedId(card.id)}
+                      onDragOver={e => onDragOver(e, card.id)}
+                      onDragEnd={() => setDraggedId(null)}
+                      initial={{ opacity:0, y:60, rotate:-5 }}
+                      animate={{ opacity:1, y: isFeatured ? -28 : 0, scale: isFeatured ? 1.5 : 1, rotate:0 }}
+                      transition={{ duration:0.35, ease:'backOut' }}
+                      style={{
+                        opacity: draggedId===card.id ? 0.4 : 1,
+                        cursor:'grab',
+                        position: isFeatured ? 'relative' : 'static',
+                        zIndex: isFeatured ? 200 : 'auto',
+                        transformOrigin: 'bottom center',
+                        filter: isFeatured
+                          ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
+                          : newCardId===card.id ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
+                      }}>
+                      <Card card={card}
+                        selected={selectedCards.includes(card.id)}
+                        onClick={() => toggleCard(card.id)} />
+                    </motion.div>
+                  );
+                })}
               </div>
             </div>
           );
@@ -1067,6 +1120,18 @@ function sortMeldCards(cards, type) {
       </div>
 
       {isDebug && <DebugPanel gameState={gameState} roomInfo={roomInfo} />}
+
+      {/* Flying card animation */}
+      {flyAnim && (
+        <motion.div
+          style={{ position:'fixed', top:0, left:0, zIndex:1000, pointerEvents:'none' }}
+          initial={{ x: flyAnim.fromX - 35, y: flyAnim.fromY - 50, opacity:1, scale:1 }}
+          animate={{ x: flyAnim.toX - 35, y: flyAnim.toY - 50, opacity:0, scale:0.75 }}
+          transition={{ duration:0.38, ease:'easeIn' }}
+        >
+          <Card card={{ hidden: flyAnim.hidden }} />
+        </motion.div>
+      )}
 
       {/* Toast message */}
       {message && (
