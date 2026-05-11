@@ -465,7 +465,7 @@ function sortMeldCards(cards, type) {
         </motion.div>
 
         {/* Cards — overlapping fan */}
-        <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-end', paddingTop:30 }}>
+        <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-end', paddingTop:30, flexWrap:'wrap', maxWidth:'100vw', overflow:'hidden' }}>
           {(gameState.pickingCards || []).map((card, idx) => {
             const pickedEntry = Object.entries(gameState.playerPicks || {}).find(([,c]) => c?.id === card.id);
             const isTaken  = !!pickedEntry;
@@ -487,7 +487,7 @@ function sortMeldCards(cards, type) {
                 whileHover={canPick ? { y:-14, rotate:0, zIndex:200 } : {}}
                 transition={{ duration:0.3, delay: idx * 0.04 }}
                 style={{
-                  marginLeft: idx === 0 ? 0 : -28,
+                  marginLeft: idx === 0 ? 0 : (window.innerWidth < 600 ? -36 : -28),
                   cursor: canPick ? 'pointer' : 'default',
                   position:'relative',
                   transformOrigin:'bottom center',
@@ -620,16 +620,18 @@ function sortMeldCards(cards, type) {
               {t.nextRound}
             </motion.button>
           )}
-          <motion.button className="btn-primary"
-            initial={{ opacity:0, y:20 }}
-            animate={{ opacity:1, y:0 }}
-            transition={{ delay: isGameOver ? 0.6 : 0.7, duration:0.4, ease:'backOut' }}
-            whileHover={{ scale:1.05 }}
-            whileTap={{ scale:0.95 }}
-            style={{ fontSize:18, padding:'14px 36px' }}
-            onClick={onLeave}>
-            {t.backToHome}
-          </motion.button>
+          {isGameOver && (
+            <motion.button className="btn-primary"
+              initial={{ opacity:0, y:20 }}
+              animate={{ opacity:1, y:0 }}
+              transition={{ delay:0.6, duration:0.4, ease:'backOut' }}
+              whileHover={{ scale:1.05 }}
+              whileTap={{ scale:0.95 }}
+              style={{ fontSize:18, padding:'14px 36px' }}
+              onClick={onLeave}>
+              {t.backToHome}
+            </motion.button>
+          )}
         </div>
       </motion.div>
     );
