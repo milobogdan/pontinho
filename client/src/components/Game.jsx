@@ -1032,14 +1032,13 @@ function sortMeldCards(cards, type) {
                       opacity:1,
                       x: i * offset,
                       y: isSelected ? -20 : isFeatured ? -16 : 0,
-                      scale: isFeatured ? 1.25 : 1,
+                      scale: 1,
                       zIndex: isSelected ? 100 : isFeatured ? 200 : i,
                     }}
                     transition={{ duration:0.2 }}
                     style={{
                       position:'absolute', top:0, left:0,
                       zIndex: isSelected ? 100 : isFeatured ? 200 : i,
-                      transformOrigin: 'bottom center',
                       filter: isFeatured
                         ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
                         : isNew ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
@@ -1102,8 +1101,7 @@ function sortMeldCards(cards, type) {
                         cursor:'grab',
                         position: isFeatured ? 'relative' : 'static',
                         zIndex: isFeatured ? 200 : 'auto',
-                        transformOrigin: 'bottom center',
-                        filter: isFeatured
+                          filter: isFeatured
                           ? 'drop-shadow(0 0 12px rgba(255,210,50,1)) drop-shadow(0 0 24px rgba(255,210,50,0.55))'
                           : newCardId===card.id ? 'drop-shadow(0 0 10px rgba(46,134,193,0.9))' : 'none',
                       }}>
