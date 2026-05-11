@@ -599,6 +599,25 @@ io.on('connection', (socket) => {
     console.log(`${player.name} rejoined room ${roomCode}`);
   });
 
+// ── DEBUG: SET GAME STATE ──────────────────────────────────────
+  socket.on('debugSetState', ({ hand, discardCard, melds, phase }, callback) => {
+    if (process.env.NODE_ENV === 'production') return callback?.({ error: 'Not available in production' });
+    const room = rooms[socket.data.roomCode];
+    if (!room?.game) return callback?.({ error: 'No game' });
+    const player = room.game.players.find(p => p.id === socket.data.playerId);
+    if (!player) return callback?.({ error: 'Player not found' });
+
+    if (hand) player.hand = hand;
+    if (discardCard) {
+      room.game.discardPile = [...room.game.discardPile, discardCard];
+    }
+    if (melds) room.game.melds = melds;
+    if (phase) room.game.turnPhase = phase;
+
+    broadcastGameState(room);
+    callback?.({ success: true });
+  });
+
 // ── LEAVE ROOM ─────────────────────────────────────────────────
   socket.on('leaveRoom', (data, callback) => {
     const room = rooms[socket.data.roomCode];
@@ -686,6 +705,8 @@ io.on('connection', (socket) => {
       processBotTurn(room);
     }, 30000);
   });
+
+  
 
 }); // ← closes io.on('connection', socket => {
 

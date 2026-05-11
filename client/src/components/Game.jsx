@@ -1,3 +1,4 @@
+import DebugPanel from './DebugPanel';
 import GameMenu from './GameMenu';
 import { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
@@ -6,7 +7,9 @@ import socket from '../socket';
 import Card from './Card';
 import { Avatar, randomBotAvatar } from './Avatar';
 
+let _isMuted = false;
 function playSound(type) {
+  if (_isMuted) return;
   const files = {
     card:    '/sounds/card.wav',
     meld:    '/sounds/win.wav',
@@ -15,7 +18,7 @@ function playSound(type) {
     win:     '/sounds/win.wav',
     error:   '/sounds/error.mp3',
     piou:    '/sounds/piou.m4a',
-    turn:    '/sounds/turn.mp3', 
+    turn:    '/sounds/turn.mp3',
   };
   const audio = new Audio(files[type]);
   audio.volume = type === 'win' ? 0.5 : 0.3;
@@ -37,6 +40,7 @@ export default function Game({ roomInfo }) {
   const [disconnectInfo, setDisconnectInfo] = useState(null);
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
   const [isMuted, setIsMuted] = useState(false);
+  const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
   useEffect(() => {
     if (!gameState) return;
@@ -113,8 +117,14 @@ export default function Game({ roomInfo }) {
   }, []);
 
   useEffect(() => {
-    if (!bgMusicRef.current) return;
-    bgMusicRef.current.volume = isMuted ? 0 : 0.1;
+    _isMuted = isMuted;
+    const bg = bgMusicRef.current;
+    if (!bg) return;
+    if (isMuted) {
+      bg.pause();
+    } else {
+      bg.play().catch(() => {});
+    }
   }, [isMuted]);
    
   useEffect(() => {
@@ -1025,6 +1035,8 @@ function sortMeldCards(cards, type) {
           );
         })()}
       </div>
+
+      {isDebug && <DebugPanel gameState={gameState} roomInfo={roomInfo} />}
 
       {/* Toast message */}
       {message && (

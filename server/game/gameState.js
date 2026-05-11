@@ -182,7 +182,7 @@ export function drawFromDiscard(game, playerId) {
 
   // Allow picking for a set only if it leads to a complete winning hand
   const handWithCard = [...player.hand, card];
-  const wouldWin = findWinningMelds(handWithCard) !== null;
+  const wouldWin = findWinningMelds(handWithCard) !== null || isValidWinningRun(handWithCard);
 
   if (!canUseDiscardCard(card, player.hand, game.melds) && !wouldWin) {
     return { error: `You can only pick from discard if you can use ${card.rank} in a run` };
@@ -207,13 +207,16 @@ export function playMeld(game, playerId, cardIds) {
   // If player picked from discard, that card must be used and only in a run
   if (game.pickedFromDiscard && !game.stopCalledBy) {
     const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
-    if (usesDiscardCard && !isValidRun(cards)) {
+    const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
+    const isWinningRun = remainingAfter.length === 0 && isValidWinningRun(cards);
+    const isWinningSet = remainingAfter.length === 0 && isValidSet(cards);
+    if (usesDiscardCard && !isValidRun(cards) && !isWinningRun && !isWinningSet) {
       return { error: 'Card picked from discard pile can only be used in a run' };
     }
   }
 
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length === 1;
+  const isWinningMove = remainingAfter.length <= 1;
   const isStopPhase = !!game.stopCalledBy;
   const valid = (isWinningMove || isStopPhase)
     ? (isValidSet(cards) || isValidWinningRun(cards))
