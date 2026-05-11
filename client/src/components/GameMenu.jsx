@@ -1,50 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import T, { RULES_CONTENT } from '../translations';
 
-const RULES = [
-  {
-    title: '🃏 Setup',
-    content: '108 cards (2 decks + 4 Jokers). Each player gets 9 cards. One card is flipped to start the discard pile.',
-  },
-  {
-    title: '🎯 Goal',
-    content: 'Be the first to empty your hand by playing melds. Others count their remaining cards as points. Reach 200 points and you explode! Explode twice and you\'re eliminated.',
-  },
-  {
-    title: '🔄 Your Turn',
-    content: 'Draw a card from the pile OR pick up the top discard (only if you can use it in a run that turn). Then play melds or extend existing ones. End your turn by discarding.',
-  },
-  {
-    title: '🃏 First Turn Special',
-    content: 'The first player draws a card and can keep it or discard and draw again. You cannot discard Jokers.',
-  },
-  {
-    title: '📦 Sets',
-    content: 'Exactly 3 cards of the same rank, all different suits. No Jokers in sets. Can be extended up to 6 cards (max 2 per suit).',
-  },
-  {
-    title: '🏃 Runs',
-    content: '3+ sequential cards of the same suit. Joker can go in the middle only (max 1 Joker per run). When winning, Joker can also be at the start or end.',
-  },
-  {
-    title: '🃏 Joker Rules',
-    content: 'Jokers cannot be discarded. You can steal a Joker from a run by replacing it with the real card it represents.',
-  },
-  {
-    title: '🛑 STOP!',
-    content: 'When another player discards, tap the discard card to call STOP! You take the card and must play all your cards to win. You have 2 minutes. If you can\'t win, it\'s a false STOP — you lose your STOP and discard rights for the round.',
-  },
-  {
-    title: '💥 Explosion',
-    content: 'First time you hit 200+ points, your score resets to the highest other player\'s score (one chance). Second time — you\'re eliminated! Last player standing wins.',
-  },
-  {
-    title: '🃏 Card Values',
-    content: '2-K = face value. Ace = 1 (or 14 if you have multiple Aces). Joker = 50 points.',
-  },
-];
-
-export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, onLeave }) {
+export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, onLeave, lang = 'en' }) {
+  const t = T[lang];
+  const rules = RULES_CONTENT[lang];
   const [isOpen, setIsOpen] = useState(false);
   const [panel, setPanel] = useState(null); // 'rules' | 'scores' | 'leave'
 
@@ -120,12 +80,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   fontFamily: "'Fredoka One',cursive",
                   fontSize: 22, color: '#f4a522',
                 }}>
-                  <span style={{
-                  fontFamily: "'Fredoka One',cursive",
-                  fontSize: 22, color: '#f4a522',
-                }}>
-                  Menu
-                </span>
+                  {t.menu}
                 </span>
                 <button onClick={close} style={{
                   background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)',
@@ -148,14 +103,14 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                   >
                     <span style={{ fontSize: 22 }}>{isMuted ? '🔇' : '🔊'}</span>
-                    {isMuted ? 'Unmute Music' : 'Mute Music'}
+                    {isMuted ? t.unmuteMusic : t.muteMusic}
                     <span style={{
                       marginLeft: 'auto', fontSize: 11,
                       background: isMuted ? 'rgba(230,57,70,0.3)' : 'rgba(76,175,80,0.3)',
                       color: isMuted ? '#ff8080' : '#80ff80',
                       padding: '2px 8px', borderRadius: 20,
                     }}>
-                      {isMuted ? 'OFF' : 'ON'}
+                      {isMuted ? t.off : t.on}
                     </span>
                   </button>
 
@@ -171,7 +126,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                   >
                     <span style={{ fontSize: 22 }}>📖</span>
-                    Rules
+                    {t.rulesMenu.replace('📖 ', '')}
                     <span style={{ marginLeft: 'auto', opacity: 0.4 }}>›</span>
                   </button>
 
@@ -187,7 +142,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
                   >
                     <span style={{ fontSize: 22 }}>🏆</span>
-                    Scores
+                    {t.scoresMenu}
                     <span style={{ marginLeft: 'auto', opacity: 0.4 }}>›</span>
                   </button>
 
@@ -206,7 +161,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   onMouseLeave={e => e.currentTarget.style.background = 'rgba(230,57,70,0.1)'}
                   >
                     <span style={{ fontSize: 22 }}>🚪</span>
-                    Leave Game
+                    {t.leaveGame}
                   </button>
                 </div>
               )}
@@ -226,11 +181,11 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   </button>
                   <h3 style={{ padding: '0 16px 12px', fontFamily: "'Fredoka One',cursive",
                     fontSize: 20, color: '#f4a522' }}>
-                    📖 Rules
+                    {t.rulesMenu}
                   </h3>
                   <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px',
                     display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    {RULES.map((rule, i) => (
+                    {rules.map((rule, i) => (
                       <div key={i} style={{
                         background: 'rgba(255,255,255,0.05)',
                         borderRadius: 10, padding: '10px 12px',
@@ -263,7 +218,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   </button>
                   <h3 style={{ padding: '0 16px 12px', fontFamily: "'Fredoka One',cursive",
                     fontSize: 20, color: '#f4a522' }}>
-                    🏆 Scoreboard
+                    {t.scoreboardMenu}
                   </h3>
                   <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 16px',
                     display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -280,13 +235,13 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                         <div style={{ flex: 1 }}>
                           <div style={{ fontWeight: 800, fontSize: 13 }}>
                             {p.name}
-                            {p.id === roomInfo.playerId ? ' (you)' : ''}
+                            {p.id === roomInfo.playerId ? ` ${t.you}` : ''}
                             {p.isBot ? ' 🤖' : ''}
                           </div>
                           <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2 }}>
-                            {p.eliminated ? '❌ Eliminated' :
-                             p.hasExploded ? '💥 Exploded once' :
-                             `${p.hand?.length ?? 0} cards in hand`}
+                            {p.eliminated ? t.eliminated :
+                             p.hasExploded ? t.explodedOnce :
+                             t.cardsInHand(p.hand?.length ?? 0)}
                           </div>
                         </div>
                         <div style={{
@@ -298,7 +253,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                       </div>
                     ))}
                     <div style={{ textAlign: 'center', fontSize: 12, opacity: 0.4, marginTop: 8 }}>
-                      Round {gameState?.round} • First to 200 explodes 💥
+                      {t.round} {gameState?.round} • {t.firstTo200}
                     </div>
                   </div>
                 </div>
@@ -311,10 +266,10 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                 >
                   <div style={{ fontSize: 48 }}>🚪</div>
                   <h3 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 22 }}>
-                    Leave Game?
+                    {t.leaveGameQ}
                   </h3>
                   <p style={{ opacity: 0.6, fontSize: 14, lineHeight: 1.5 }}>
-                    You'll be replaced by a bot and won't be able to rejoin this game.
+                    {t.replacedByBot}
                   </p>
                   <button onClick={onLeave} style={{
                     width: '100%', padding: '14px', borderRadius: 50, border: 'none',
@@ -323,7 +278,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                     fontSize: 18, cursor: 'pointer',
                     boxShadow: '0 4px 16px rgba(230,57,70,0.4)',
                   }}>
-                    Yes, Leave
+                    {t.yesLeave}
                   </button>
                   <button onClick={() => setPanel(null)} style={{
                     width: '100%', padding: '12px', borderRadius: 50,
@@ -331,7 +286,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                     background: 'transparent', color: 'rgba(255,255,255,0.6)',
                     fontSize: 15, cursor: 'pointer',
                   }}>
-                    Cancel
+                    {t.cancel}
                   </button>
                 </div>
               )}

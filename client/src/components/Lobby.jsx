@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import socket from '../socket';
 import { Avatar, AvatarPicker, AVATAR_LIST } from './Avatar';
 import { motion, AnimatePresence } from 'framer-motion';
+import T from '../translations';
 
 const CHAT_MESSAGES = [
   { emoji: '👋', text: 'Hello!' },
@@ -12,7 +13,8 @@ const CHAT_MESSAGES = [
   { emoji: '😡', text: 'No mercy!' },
 ];
 
-export default function Lobby({ onGameStart }) {
+export default function Lobby({ onGameStart, lang = 'en' }) {
+  const t = T[lang];
   const [screen, setScreen]           = useState('landing');
   const [playerName, setPlayerName]   = useState('');
   const [avatarId, setAvatarId]       = useState('sporty');
@@ -70,8 +72,8 @@ export default function Lobby({ onGameStart }) {
   }, []);
 
   function createRoom() {
-    if (!playerName.trim()) return setError('Enter your name first');
-    socket.emit('createRoom', { playerName, avatarId, gameName: gameName || `${playerName}'s Game`, maxPlayers, isPrivate }, (res) => {
+    if (!playerName.trim()) return setError(t.yourName);
+    socket.emit('createRoom', { playerName, avatarId, gameName: gameName || t.sByName(playerName), maxPlayers, isPrivate }, (res) => {
       if (res.error) return setError(res.error);
       setCurrentRoom({ code: res.code, playerId: res.playerId, players: [{ id: res.playerId, name: playerName, avatarId, isReady: true }], isHost: true });
       setScreen('waiting');
@@ -81,8 +83,8 @@ export default function Lobby({ onGameStart }) {
 
   function joinRoom(code) {
     const c = (code || roomCode).toUpperCase().trim();
-    if (!playerName.trim()) return setError('Enter your name first');
-    if (!c) return setError('Enter a room code');
+    if (!playerName.trim()) return setError(t.yourName);
+    if (!c) return setError(t.roomCode);
     socket.emit('joinRoom', { code: c, playerName, avatarId }, (res) => {
       if (res.error) return setError(res.error);
       setCurrentRoom({ code: c, playerId: res.playerId, players: res.players || [], isHost: false });
@@ -140,7 +142,7 @@ export default function Lobby({ onGameStart }) {
         animate={{ opacity:0.6 }}
         transition={{ delay:0.2 }}
         style={{ fontSize:14, marginTop:-12 }}>
-        with Family
+        {t.subtitle}
       </motion.p>
 
       {/* Avatar */}
@@ -173,7 +175,7 @@ export default function Lobby({ onGameStart }) {
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.2 }}
         style={{ width:'100%', maxWidth:340 }}>
         <input
-          placeholder="Your name"
+          placeholder={t.yourName}
           value={playerName}
           onChange={e => setPlayerName(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && setScreen('create')}
@@ -193,7 +195,7 @@ export default function Lobby({ onGameStart }) {
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }}
         style={{ display:'flex', flexDirection:'column', gap:12, width:'100%', maxWidth:340 }}>
         <button onClick={() => {
-          if (!playerName.trim()) return setError('Enter your name first');
+          if (!playerName.trim()) return setError(t.yourName);
           setError('');
           setScreen('create');
         }} style={{
@@ -203,10 +205,10 @@ export default function Lobby({ onGameStart }) {
           fontSize:20, fontWeight:700, letterSpacing:1,
           boxShadow:'0 6px 20px rgba(244,165,34,0.4)',
         }}>
-          🎮 Create Game
+          🎮 {t.createGame}
         </button>
         <button onClick={() => {
-          if (!playerName.trim()) return setError('Enter your name first');
+          if (!playerName.trim()) return setError(t.yourName);
           setError('');
           setScreen('join');
         }} style={{
@@ -215,7 +217,7 @@ export default function Lobby({ onGameStart }) {
           color:'#fff', fontFamily:"'Fredoka One',cursive",
           fontSize:20, letterSpacing:1,
         }}>
-          🔗 Join Game
+          🔗 {t.joinGame}
         </button>
       </motion.div>
       <button onClick={() => window.location.reload()} style={{
@@ -224,7 +226,7 @@ export default function Lobby({ onGameStart }) {
         background:'transparent', color:'rgba(255,255,255,0.3)',
         cursor:'pointer', fontSize:13,
       }}>
-        ← Back to Start
+        {t.backToStart}
       </button>
     </div>
   );
@@ -238,7 +240,7 @@ export default function Lobby({ onGameStart }) {
     }}>
       <motion.h2 initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }}
         style={{ fontFamily:"'Fredoka One',cursive", fontSize:32, color:'#f4a522' }}>
-        🎮 Create Game
+        🎮 {t.createGame}
       </motion.h2>
 
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
@@ -248,9 +250,9 @@ export default function Lobby({ onGameStart }) {
 
         {/* Game name */}
         <div>
-          <p style={{ fontSize:12, opacity:0.6, marginBottom:6 }}>GAME NAME</p>
+          <p style={{ fontSize:12, opacity:0.6, marginBottom:6 }}>{t.gameName.toUpperCase()}</p>
           <input
-            placeholder={`${playerName}'s Game`}
+            placeholder={t.sByName(playerName)}
             value={gameName}
             onChange={e => setGameName(e.target.value)}
             style={{
@@ -264,7 +266,7 @@ export default function Lobby({ onGameStart }) {
 
         {/* Max players */}
         <div>
-          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>MAX PLAYERS</p>
+          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>{t.maxPlayers.toUpperCase()}</p>
           <div style={{ display:'flex', gap:8, justifyContent:'center' }}>
             {[2,3,4,5,6,7,8].map(n => (
               <div key={n} onClick={() => setMaxPlayers(n)} style={{
@@ -283,11 +285,11 @@ export default function Lobby({ onGameStart }) {
 
         {/* Public/Private toggle */}
         <div>
-          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>VISIBILITY</p>
+          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>{t.visibility}</p>
           <div style={{ display:'flex', gap:8 }}>
             {[
-              { value: false, label: '🌍 Public', desc: 'Anyone can join' },
-              { value: true,  label: '🔒 Private', desc: 'Code only' },
+              { value: false, label: t.public, desc: t.anyoneCanJoin },
+              { value: true,  label: t.private, desc: t.codeOnly },
             ].map(opt => (
               <div key={String(opt.value)} onClick={() => setIsPrivate(opt.value)} style={{
                 flex:1, padding:'10px', borderRadius:12, cursor:'pointer', textAlign:'center',
@@ -311,14 +313,14 @@ export default function Lobby({ onGameStart }) {
           fontSize:18, fontWeight:700,
           boxShadow:'0 4px 16px rgba(244,165,34,0.4)',
         }}>
-          🚀 Create Room
+          🚀 {t.createRoom}
         </button>
 
         <button onClick={() => { setError(''); setScreen('landing'); }} style={{
           padding:'10px', borderRadius:50, border:'1px solid rgba(255,255,255,0.2)',
           cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:14,
         }}>
-          ← Back
+          {t.back}
         </button>
       </motion.div>
     </div>
@@ -333,7 +335,7 @@ export default function Lobby({ onGameStart }) {
     }}>
       <motion.h2 initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }}
         style={{ fontFamily:"'Fredoka One',cursive", fontSize:32, color:'#f4a522' }}>
-        🔗 Join Game
+        🔗 {t.joinGame}
       </motion.h2>
 
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
@@ -342,10 +344,10 @@ export default function Lobby({ onGameStart }) {
         {/* Private code entry */}
         <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:20, padding:20,
           border:'1px solid rgba(255,255,255,0.1)' }}>
-          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>🔒 HAVE A PRIVATE CODE?</p>
+          <p style={{ fontSize:12, opacity:0.6, marginBottom:8 }}>{t.havePrivateCode}</p>
           <div style={{ display:'flex', gap:8 }}>
             <input
-              placeholder="Enter code..."
+              placeholder={t.enterCode}
               value={roomCode}
               onChange={e => setRoomCode(e.target.value.toUpperCase())}
               onKeyDown={e => e.key === 'Enter' && joinRoom()}
@@ -360,7 +362,7 @@ export default function Lobby({ onGameStart }) {
               padding:'10px 20px', borderRadius:12, border:'none', cursor:'pointer',
               background:'#f4a522', color:'#3a1f00', fontWeight:800, fontSize:14,
             }}>
-              Join
+              {t.join}
             </button>
           </div>
         </div>
@@ -374,7 +376,7 @@ export default function Lobby({ onGameStart }) {
               color: roomFilter === f ? '#3a1f00' : '#fff',
               fontWeight:700, fontSize:13, textTransform:'capitalize', transition:'all 0.2s',
             }}>
-              {f === 'all' ? '🌍 All' : f === 'open' ? '✅ Open' : '🔴 Full'}
+              {f === 'all' ? t.all : f === 'open' ? t.open : t.full}
             </button>
           ))}
         </div>
@@ -384,8 +386,8 @@ export default function Lobby({ onGameStart }) {
           {filteredRooms.length === 0 ? (
             <div style={{ textAlign:'center', opacity:0.5, padding:40 }}>
               <div style={{ fontSize:40, marginBottom:8 }}>🎴</div>
-              <p>No games available yet...</p>
-              <p style={{ fontSize:13, marginTop:4 }}>Create one or wait for someone!</p>
+              <p>{t.noGamesAvailable}</p>
+              <p style={{ fontSize:13, marginTop:4 }}>{t.createOneOrWait}</p>
             </div>
           ) : filteredRooms.map(room => (
             <motion.div key={room.code}
@@ -414,7 +416,7 @@ export default function Lobby({ onGameStart }) {
                     color: room.playerCount < room.maxPlayers ? '#3a1f00' : 'rgba(255,255,255,0.4)',
                     fontWeight:800, fontSize:13,
                   }}>
-                  {room.playerCount < room.maxPlayers ? 'Join' : 'Full'}
+                  {room.playerCount < room.maxPlayers ? t.join : t.full.replace('🔴 ', '')}
                 </button>
               </div>
             </motion.div>
@@ -427,7 +429,7 @@ export default function Lobby({ onGameStart }) {
           padding:'10px', borderRadius:50, border:'1px solid rgba(255,255,255,0.2)',
           cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:14,
         }}>
-          ← Back
+          {t.back}
         </button>
       </motion.div>
     </div>
@@ -461,7 +463,7 @@ export default function Lobby({ onGameStart }) {
             background:'rgba(255,255,255,0.1)', color:'#fff',
             cursor:'pointer', fontSize:12,
           }}>
-            📋 Copy invite link
+            {t.copyInviteLink}
           </button>
         </motion.div>
 
@@ -510,7 +512,7 @@ export default function Lobby({ onGameStart }) {
                   <span style={{ fontSize:12, fontWeight:700,
                     color: p.id === currentRoom.playerId ? '#f4a522' : '#fff' }}>
                     {p.name}{p.isBot ? ` 🤖` : ''}
-                    {p.id === currentRoom.playerId ? ' (you)' : ''}
+                    {p.id === currentRoom.playerId ? ` ${t.you}` : ''}
                   </span>
                   {p.isBot && currentRoom.isHost && (
                     <button onClick={() => socket.emit('removeBot', { botId: p.id }, () => {})}
@@ -527,7 +529,7 @@ export default function Lobby({ onGameStart }) {
                 {p.isBot && (
                   <span style={{ fontSize:10, opacity:0.6,
                     color: p.difficulty === 'easy' ? '#4caf50' : p.difficulty === 'medium' ? '#f4a522' : '#e63946' }}>
-                    {p.difficulty}
+                    {p.difficulty === 'easy' ? t.easy : p.difficulty === 'medium' ? t.medium : t.hard}
                   </span>
                 )}
               </motion.div>
@@ -556,7 +558,7 @@ export default function Lobby({ onGameStart }) {
           <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.3 }}
             style={{ width:'100%', maxWidth:400 }}>
             <p style={{ fontSize:12, opacity:0.5, letterSpacing:2, marginBottom:10, textAlign:'center' }}>
-              ADD BOTS
+              {t.addBots}
             </p>
             <div style={{ display:'flex', gap:8 }}>
               {[['easy','🟢','#4caf50'],['medium','🟡','#f4a522'],['hard','🔴','#e63946']].map(([diff, emoji, color]) => (
@@ -566,7 +568,7 @@ export default function Lobby({ onGameStart }) {
                   background:`${color}15`, color:'#fff',
                   fontWeight:700, fontSize:13, transition:'all 0.2s',
                 }}>
-                  {emoji} {diff.charAt(0).toUpperCase() + diff.slice(1)}
+                  {emoji} {diff === 'easy' ? t.easy : diff === 'medium' ? t.medium : t.hard}
                 </button>
               ))}
             </div>
@@ -585,13 +587,13 @@ export default function Lobby({ onGameStart }) {
               fontFamily:"'Fredoka One',cursive", fontSize:18, fontWeight:700,
               transition:'all 0.3s',
             }}>
-              {me?.isReady ? '✅ Ready!' : '👆 Tap when ready'}
+              {me?.isReady ? t.ready : t.tapWhenReady}
             </button>
           )}
           {currentRoom.isHost && (
             <button onClick={() => {
               const notReady = currentRoom.players.filter(p => !p.isBot && !p.isReady);
-              if (notReady.length > 0) return setError(`Waiting for ${notReady.map(p => p.name).join(', ')} to be ready!`);
+              if (notReady.length > 0) return setError(t.waitingForReady(notReady.map(p => p.name).join(', ')));
               startGame();
           }}
               disabled={currentRoom.players.length < 2}
@@ -605,7 +607,7 @@ export default function Lobby({ onGameStart }) {
                 fontFamily:"'Fredoka One',cursive", fontSize:18, fontWeight:700,
                 transition:'all 0.3s',
               }}>
-              {currentRoom.players.length < 2 ? 'Waiting for players...' : '🚀 Start Game!'}
+              {currentRoom.players.length < 2 ? t.waitingForPlayers : t.startGame}
             </button>
           )}
         </motion.div>
@@ -620,7 +622,7 @@ export default function Lobby({ onGameStart }) {
           padding:'10px', borderRadius:50, border:'1px solid rgba(255,255,255,0.2)',
           cursor:'pointer', background:'transparent', color:'rgba(255,255,255,0.6)', fontSize:14,
         }}>
-          ← Leave Room
+          {t.leaveRoom}
         </button>
       </div>
     );

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import socket from '../socket';
 import Card from './Card';
 import { Avatar, randomBotAvatar } from './Avatar';
+import T from '../translations';
 
 let _isMuted = false;
 function playSound(type) {
@@ -25,7 +26,8 @@ function playSound(type) {
   audio.play().catch(() => {});
 }
 
-export default function Game({ roomInfo, onLeave }) {
+export default function Game({ roomInfo, onLeave, lang = 'en' }) {
+  const t = T[lang];
   const [gameState, setGameState] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
   const [message, setMessage]     = useState('');
@@ -566,15 +568,15 @@ function sortMeldCards(cards, type) {
           style={{ textAlign:'center' }}>
           <div style={{ fontSize:64, marginBottom:8 }}>{isGameOver ? '🏆' : '🎉'}</div>
           <h1 style={{ fontFamily:"'Fredoka One',cursive", fontSize:42, marginBottom:4 }}>
-            {isGameOver ? 'Game Over!' : 'Round Over!'}
+            {isGameOver ? t.gameOver : t.roundOver}
           </h1>
-          {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>🎴 {winner.name} wins!</p>}
+          {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>{t.wins(winner.name)}</p>}
         </motion.div>
 
         <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
           width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.1)' }}>
           <h3 style={{ fontFamily:"'Fredoka One',cursive", fontSize:22, marginBottom:16, textAlign:'center' }}>
-            📊 Scoreboard
+            {t.scoreboard}
           </h3>
           {[...gameState.players]
             .sort((a, b) => a.totalScore - b.totalScore)
@@ -615,7 +617,7 @@ function sortMeldCards(cards, type) {
               whileTap={{ scale:0.95 }}
               style={{ fontSize:18, padding:'14px 36px' }}
               onClick={() => emit('startNextRound')}>
-              Next Round →
+              {t.nextRound}
             </motion.button>
           )}
           <motion.button className="btn-primary"
@@ -626,7 +628,7 @@ function sortMeldCards(cards, type) {
             whileTap={{ scale:0.95 }}
             style={{ fontSize:18, padding:'14px 36px' }}
             onClick={onLeave}>
-            Back to Home
+            {t.backToHome}
           </motion.button>
         </div>
       </motion.div>
@@ -691,7 +693,7 @@ function sortMeldCards(cards, type) {
                   fontSize:36, padding:'14px 36px', borderRadius:24,
                   boxShadow:'0 6px 30px rgba(244,165,34,0.5)',
                 }}>
-                  🎉 {winner.name} wins!
+                  {t.winsShort(winner.name)}
                 </div>
               </motion.div>
             )}
@@ -714,10 +716,7 @@ function sortMeldCards(cards, type) {
           }}>
           <div>
             <div style={{ fontWeight:900, fontSize:15 }}>
-              ⚠️ {disconnectInfo.playerName} disconnected!
-            </div>
-            <div style={{ fontSize:12, opacity:0.7, marginTop:2 }}>
-              Waiting for reconnection... replacing with bot if they don't come back
+              ⚠️ {t.disconnectedWaiting(disconnectInfo.playerName)}
             </div>
           </div>
           <div style={{
@@ -743,44 +742,29 @@ function sortMeldCards(cards, type) {
           }}>
           <div>
             <div style={{ fontWeight:900, fontSize:16 }}>
-              🛑 {gameState.players.find(p => p.id === gameState.stopCalledBy)?.name} called STOP!
-            </div>
-            <div style={{ fontSize:12, opacity:0.85, marginTop:2 }}>
-              {gameState.stopCalledBy === roomInfo.playerId
-                ? 'Play all your cards to win! Use the normal game controls.'
-                : `Game frozen — waiting for ${gameState.players.find(p => p.id === gameState.stopCalledBy)?.name}`
-              }
+              🛑 {t.stopBanner(gameState.players.find(p => p.id === gameState.stopCalledBy)?.name, stopCountdown)}
             </div>
           </div>
-          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-            <div style={{
-              fontFamily:"'Fredoka One',cursive",
-              fontSize:28,
-              color: stopCountdown <= 10 ? '#ffff80' : '#fff',
-            }}>
-              {stopCountdown}s
+          {gameState.stopCalledBy === roomInfo.playerId && (
+            <div style={{ display:'flex', gap:8 }}>
+              <button onClick={() => emit('resetStop')} style={{
+                background:'rgba(255,255,255,0.15)', color:'#fff',
+                border:'1px solid rgba(255,255,255,0.4)',
+                borderRadius:20, padding:'6px 14px',
+                cursor:'pointer', fontSize:12, fontWeight:700,
+              }}>
+                🔄 {t.reset}
+              </button>
+              <button onClick={declareFalseStop} style={{
+                background:'rgba(0,0,0,0.25)', color:'#fff',
+                border:'1px solid rgba(255,255,255,0.4)',
+                borderRadius:20, padding:'6px 14px',
+                cursor:'pointer', fontSize:12, fontWeight:700,
+              }}>
+                😤 {t.giveUp}
+              </button>
             </div>
-            {gameState.stopCalledBy === roomInfo.playerId && (
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => emit('resetStop')} style={{
-                  background:'rgba(255,255,255,0.15)', color:'#fff',
-                  border:'1px solid rgba(255,255,255,0.4)',
-                  borderRadius:20, padding:'6px 14px',
-                  cursor:'pointer', fontSize:12, fontWeight:700,
-                }}>
-                  🔄 Reset
-                </button>
-                <button onClick={declareFalseStop} style={{
-                  background:'rgba(0,0,0,0.25)', color:'#fff',
-                  border:'1px solid rgba(255,255,255,0.4)',
-                  borderRadius:20, padding:'6px 14px',
-                  cursor:'pointer', fontSize:12, fontWeight:700,
-                }}>
-                  😤 Give up
-                </button>
-              </div>
-            )}
-          </div>
+          )}
         </motion.div>
       )}
 
@@ -797,6 +781,7 @@ function sortMeldCards(cards, type) {
           isMuted={isMuted}
           onToggleMute={() => setIsMuted(prev => !prev)}
           onLeave={handleLeave}
+          lang={lang}
         />
 
         <motion.div
@@ -811,11 +796,11 @@ function sortMeldCards(cards, type) {
             fontWeight:800, fontSize:15,
             color: isMyTurn ? '#f4a522' : '#fff',
           }}>
-          {isMyTurn ? '⭐ Your turn!' : `${currentPlayer?.name}'s turn`}
+          {isMyTurn ? t.yourTurn : t.sTurn(currentPlayer?.name)}
         </motion.div>
 
         <div style={{ fontFamily:"'Fredoka One',cursive", fontSize:18, opacity:0.8 }}>
-          Round {gameState.round}
+          {t.round} {gameState.round}
         </div>
       </div>
 
@@ -1055,20 +1040,20 @@ function sortMeldCards(cards, type) {
                 <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
                   <p style={{ opacity:0.6, fontSize:13, fontWeight:700, letterSpacing:0.4, margin:0 }}>
                     {me?.hand?.find(c => c.id === newCardId)?.isJoker
-                      ? '🃏 You drew a Joker — you must keep it'
-                      : 'Keep this card or draw another?'}
+                      ? t.jokerMustKeep
+                      : t.keepOrDraw}
                   </p>
                   <div style={{ display:'flex', gap:12 }}>
                     <button className="btn-success"
                       style={{ fontSize:16, padding:'13px 30px' }}
                       onClick={() => emit('firstKeepOrDiscard', { keep:true })}>
-                      Keep it
+                      {t.keep}
                     </button>
                     {!me?.hand?.some(c => c.id === newCardId && c.isJoker) && (
                       <button className="btn-danger"
                         style={{ fontSize:16, padding:'13px 30px' }}
                         onClick={() => emit('firstKeepOrDiscard', { keep:false })}>
-                        Draw another
+                        {t.discardAndRedraw}
                       </button>
                     )}
                   </div>
@@ -1077,11 +1062,11 @@ function sortMeldCards(cards, type) {
               {phase==='play' && <>
                 {selectedCards.length === 0 && (
                   <p style={{ opacity:0.5, fontStyle:'italic', fontSize:13 }}>
-                    Select cards to play a meld · Click discard pile to discard
+                    {t.selectCardsHint}
                   </p>
                 )}
                 {selectedCards.length === 1 && !me?.hand?.find(c => c.id===selectedCards[0])?.isJoker && (
-                  <p style={{ opacity:0.6, fontSize:13 }}>👆 Click the discard pile to discard</p>
+                  <p style={{ opacity:0.6, fontSize:13 }}>👆 {t.selectCardsHint.split('·')[1]?.trim()}</p>
                 )}
                 {selectedCards.length >= 3 && (
                   <div onClick={() => emit('playMeld', { cardIds:selectedCards })}
@@ -1094,7 +1079,7 @@ function sortMeldCards(cards, type) {
                     }}
                     onMouseEnter={e => e.currentTarget.style.background='rgba(255,255,255,0.15)'}
                     onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}>
-                    ▶ Play {selectedCards.length} cards as meld
+                    {t.playMeld(selectedCards.length)}
                   </div>
                 )}
               </>}
@@ -1112,7 +1097,7 @@ function sortMeldCards(cards, type) {
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <span style={{ fontWeight:800, fontSize:14 }}>
-              Your hand ({me?.hand?.length ?? 0})
+              {t.yourHand} ({me?.hand?.length ?? 0})
             </span>
             {(me?.stopBanned || me?.discardBanned) && (
               <motion.span
@@ -1122,7 +1107,7 @@ function sortMeldCards(cards, type) {
                 style={{ background:'rgba(230,57,70,0.85)', color:'#fff',
                   fontSize:12, fontWeight:900, padding:'4px 12px', borderRadius:20,
                   boxShadow:'0 2px 10px rgba(230,57,70,0.5)' }}>
-                😤 PIOU!!! STOP and discard banned this round!
+                {t.piouBanned}
               </motion.span>
             )}
           </div>

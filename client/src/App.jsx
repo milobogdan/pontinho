@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Lobby from './components/Lobby';
 import Game from './components/Game';
+import T, { RULES_CONTENT } from './translations';
 import './App.css';
 
 const LANGUAGES = {
@@ -10,73 +11,13 @@ const LANGUAGES = {
   ro: { code: 'ro', flag: '🇷🇴', label: 'RO' },
 };
 
-const TRANSLATIONS = {
-  pt: {
-    play: 'JOGAR',
-    rules: '📖 Regras',
-    rulesTitle: '📖 Regras do Jogo',
-    close: 'Fechar',
-    subtitle: 'com a Família',
-  },
-  en: {
-    play: 'PLAY',
-    rules: '📖 Rules',
-    rulesTitle: '📖 Game Rules',
-    close: 'Close',
-    subtitle: 'with Family',
-  },
-  ro: {
-    play: 'JOACĂ',
-    rules: '📖 Reguli',
-    rulesTitle: '📖 Regulile Jocului',
-    close: 'Închide',
-    subtitle: 'cu Familia',
-  },
-};
-
-const RULES_CONTENT = {
-  en: [
-    { title: '🃏 Setup', content: '108 cards (2 decks + 4 Jokers). Each player gets 9 cards. One card starts the discard pile.' },
-    { title: '🎯 Goal', content: 'Be first to empty your hand. Others count remaining cards as points. Hit 200+ points and you explode! Explode twice — eliminated!' },
-    { title: '🔄 Your Turn', content: 'Draw from pile OR pick up top discard (only if you can use it in a run). Play melds, extend existing ones, then discard to end turn.' },
-    { title: '🃏 First Turn', content: 'First player draws and can keep or discard & redraw. You cannot discard Jokers!' },
-    { title: '📦 Sets', content: '3 cards same rank, all different suits. No Jokers. Extend up to 6 cards (max 2 per suit).' },
-    { title: '🏃 Runs', content: '3+ sequential same-suit cards. Joker in middle only (max 1 per run). When winning, Joker can be at start or end.' },
-    { title: '🛑 STOP!', content: 'Tap the discard card on another player\'s turn to call STOP! You have 2 minutes to play all your cards. Fail = false STOP penalty!' },
-    { title: '💥 Explosion', content: 'First 200+ pts: score resets to highest opponent\'s score. Second time: eliminated! Last player wins.' },
-    { title: '🃏 Card Values', content: '2-K = face value. Ace = 1 (or 14 with multiple Aces). Joker = 50 pts.' },
-  ],
-  pt: [
-    { title: '🃏 Configuração', content: '108 cartas (2 baralhos + 4 Jokers). Cada jogador recebe 9 cartas.' },
-    { title: '🎯 Objetivo', content: 'Ser o primeiro a esvaziar a mão. Os outros contam as cartas restantes como pontos. 200+ pontos = explosão! Exploda duas vezes = eliminado!' },
-    { title: '🔄 Sua Vez', content: 'Compre do monte OU pegue o descarte (só se usar em uma sequência). Jogue combinações, estenda existentes, depois descarte.' },
-    { title: '🃏 Primeira Vez', content: 'O primeiro jogador compra e pode manter ou descartar e comprar novamente. Não pode descartar Jokers!' },
-    { title: '📦 Trincas', content: '3 cartas do mesmo valor, todos naipes diferentes. Sem Jokers. Estenda até 6 cartas (máx 2 por naipe).' },
-    { title: '🏃 Sequências', content: '3+ cartas seguidas do mesmo naipe. Joker só no meio (máx 1 por sequência). Ao vencer, Joker pode estar no início ou fim.' },
-    { title: '🛑 STOP!', content: 'Toque na carta descartada na vez do outro para chamar STOP! Você tem 2 minutos para jogar todas as cartas. Falhar = penalidade!' },
-    { title: '💥 Explosão', content: 'Primeiro 200+ pts: pontuação reseta. Segunda vez: eliminado! Último jogador vence.' },
-    { title: '🃏 Valores', content: '2-K = valor nominal. Ás = 1 (ou 14 com múltiplos Ases). Joker = 50 pts.' },
-  ],
-  ro: [
-    { title: '🃏 Pregătire', content: 'Jocul folosește 108 cărți (2 pachete + 4 Jokeri). Fiecare jucător primește câte 9 cărți. O carte este întoarsă pe față pentru a începe teancul de cărți decartate.' },
-    { title: '🎯 Scopul Jocului', content: 'Fii primul care își golește mâna. Ceilalți jucători își numără cărțile rămase ca puncte. Dacă atingi 200+ puncte, explodezi! Cine explodează de două ori este eliminat.' },
-    { title: '🔄 Turul Tău', content: 'Trage o carte din pachet SAU ia ultima carte decartată (doar dacă o poți folosi imediat într-o suită). Joacă formații noi, extinde-le pe cele existente, apoi decartează o carte.' },
-    { title: '🃏 Prima Tură', content: 'Primul jucător trage o carte și poate alege să o păstreze sau să o decarteze și să tragă alta. Atenție: Jokerii nu pot fi decartați!' },
-    { title: '📦 Seturi', content: '3 cărți de același rang, cu toate culorile diferite. Fără Jokeri. Extensibil până la 6 cărți (cel mult 2 din fiecare culoare).' },
-    { title: '🏃 Suite', content: '3+ cărți consecutive de aceeași culoare. Jokerul doar la mijloc (max 1 per suită). La câștig, Jokerul poate fi și la început sau la sfârșit.' },
-    { title: '🛑 STOP!', content: 'Atinge cartea decartată în tura altui jucător pentru a striga STOP! Ai 2 minute să îți joci toate cărțile. Dacă eșuezi, primești penalizare pentru STOP fals!' },
-    { title: '💥 Explozia', content: 'Prima dată la 200+ puncte: scorul se resetează la valoarea celui mai mare scor al unui adversar. A doua oară: ești eliminat! Ultimul rămas câștigă.' },
-    { title: '🃏 Valoarea Cărților', content: '2–K: valoarea nominală. As: 1 punct (sau 14 cu mai mulți Ași). Joker: 50 de puncte.' },
-  ],
-};
-
 export default function App() {
   const [screen, setScreen]     = useState('splash');
   const [roomInfo, setRoomInfo] = useState(null);
   const [lang, setLang]         = useState('en');
   const [showRules, setShowRules] = useState(false);
 
-  const t = TRANSLATIONS[lang];
+  const t = T[lang];
   const rules = RULES_CONTENT[lang];
 
   function onGameStart(info) {
@@ -281,8 +222,8 @@ export default function App() {
   // ── LOBBY / GAME ──────────────────────────────────────────────
   return (
     <div className="app">
-      {screen === 'lobby' && <Lobby onGameStart={onGameStart} />}
-      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => setScreen('splash')} />}
+      {screen === 'lobby' && <Lobby onGameStart={onGameStart} lang={lang} />}
+      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => setScreen('splash')} lang={lang} />}
     </div>
   );
 }
