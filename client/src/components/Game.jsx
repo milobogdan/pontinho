@@ -38,6 +38,7 @@ export default function Game({ roomInfo }) {
   const isDraggingRef = useRef(false);
   const handContainerRef = useRef(null);
   const prevTurnPhaseRef = useRef(null);
+  const prevGameStateRef = useRef(null);
   const drawPileRef = useRef(null);
   const discardPileRef = useRef(null);
   const [flyAnim, setFlyAnim] = useState(null); // { fromX, fromY, toX, toY, hidden }
@@ -88,6 +89,44 @@ export default function Game({ roomInfo }) {
       }
       return [...kept, ...newOnes];
     });
+  }, [gameState]);
+
+  // Fly animation for opponent draw / discard
+  useEffect(() => {
+    const prev = prevGameStateRef.current;
+    prevGameStateRef.current = gameState;
+    if (!prev || !gameState || gameState.status !== 'playing') return;
+
+    const opponentTurn = gameState.players[gameState.currentPlayerIndex]?.id !== roomInfo.playerId;
+    const opponentY = window.innerHeight * 0.2;
+    const opponentX = window.innerWidth / 2;
+
+    // Opponent drew from pile
+    if (opponentTurn && gameState.drawPile.length < prev.drawPile.length && drawPileRef.current) {
+      const r = drawPileRef.current.getBoundingClientRect();
+      setFlyAnim({ fromX: r.left + r.width / 2, fromY: r.top + r.height / 2,
+        toX: opponentX, toY: opponentY, hidden: true });
+      setTimeout(() => setFlyAnim(null), 450);
+      return;
+    }
+
+    // Opponent drew from discard
+    if (opponentTurn && gameState.discardPile.length < prev.discardPile.length && discardPileRef.current) {
+      const r = discardPileRef.current.getBoundingClientRect();
+      setFlyAnim({ fromX: r.left + r.width / 2, fromY: r.top + r.height / 2,
+        toX: opponentX, toY: opponentY, hidden: true });
+      setTimeout(() => setFlyAnim(null), 450);
+      return;
+    }
+
+    // Opponent discarded
+    if (gameState.lastDiscardedBy && gameState.lastDiscardedBy !== roomInfo.playerId &&
+        gameState.lastDiscardedBy !== prev.lastDiscardedBy && discardPileRef.current) {
+      const r = discardPileRef.current.getBoundingClientRect();
+      setFlyAnim({ fromX: opponentX, fromY: opponentY,
+        toX: r.left + r.width / 2, toY: r.top + r.height / 2, hidden: true });
+      setTimeout(() => setFlyAnim(null), 400);
+    }
   }, [gameState]);
 
   // Clear the featured highlight the moment we leave firstKeepOrDiscard
