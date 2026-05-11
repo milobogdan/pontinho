@@ -169,43 +169,38 @@ function canReplaceJoker(meldCards, replacementCard) {
   return isValidRun([...withoutJoker, replacementCard]);
 }
 
-// Special rule: when going out, Joker can be at start or end of a run
-// but the run cannot also contain a Jack
-export function isValidWinningRun(cards) {
-  if (cards.length < 3) return false;
-
+function checkWinningRunWithValues(cards, getVal) {
   const jokers = cards.filter(c => c.isJoker);
   const nonJokers = cards.filter(c => !c.isJoker);
 
-  // Still max 1 joker per run
   if (jokers.length > 1) return false;
+  if (jokers.length === 0) return checkRunWithValues(cards, getVal);
 
-  // No joker — same as regular run
-  if (jokers.length === 0) return isValidRun(cards);
-
-  // All non-jokers must be same suit
   const suit = nonJokers[0].suit;
   if (!nonJokers.every(c => c.suit === suit)) return false;
 
-  // No duplicate values
-  const values = nonJokers.map(c => c.value);
+  const values = nonJokers.map(c => getVal(c));
   if (new Set(values).size !== values.length) return false;
 
-  // Sort non-jokers by value
-  const sorted = [...nonJokers].sort((a, b) => a.value - b.value);
+  const sorted = [...nonJokers].sort((a, b) => getVal(a) - getVal(b));
 
-  // Check gaps — joker fills 1 gap OR sits at start/end
   let gaps = 0;
   for (let i = 1; i < sorted.length; i++) {
-    const diff = sorted[i].value - sorted[i - 1].value;
-    if (diff === 1) continue;       // consecutive, no gap
-    if (diff === 2) { gaps++; continue; } // joker fills this gap
-    return false;                   // gap too large for 1 joker
+    const diff = getVal(sorted[i]) - getVal(sorted[i - 1]);
+    if (diff === 1) continue;
+    if (diff === 2) { gaps++; continue; }
+    return false;
   }
 
-  // gaps=0 means joker at start or end (both valid when winning)
-  // gaps=1 means joker in middle (always valid)
   return gaps <= 1;
+}
+
+// Special rule: when going out, Joker can be at start or end of a run
+export function isValidWinningRun(cards) {
+  if (cards.length < 3) return false;
+  const asLow  = (c) => c.rank === 'A' ? 1  : c.value;
+  const asHigh = (c) => c.rank === 'A' ? 14 : c.value;
+  return checkWinningRunWithValues(cards, asLow) || checkWinningRunWithValues(cards, asHigh);
 }
 
 export { isValidRun, isValidSet, isValidMeld, isValidExtension,
