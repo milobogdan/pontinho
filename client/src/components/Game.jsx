@@ -45,6 +45,7 @@ export default function Game({ roomInfo }) {
   const [disconnectInfo, setDisconnectInfo] = useState(null);
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
   const [isMuted, setIsMuted] = useState(false);
+  const [showRoundEnd, setShowRoundEnd] = useState(false);
   const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
   useEffect(() => {
@@ -209,8 +210,16 @@ export default function Game({ roomInfo }) {
   }, [gameState?.stopCalledBy]);
 
   useEffect(() => {
+    if (gameState?.status !== 'roundEnd' && gameState?.status !== 'gameOver') {
+      setShowRoundEnd(false);
+    }
+  }, [gameState?.status]);
+
+  useEffect(() => {
     if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
-        playSound('win');
+      setShowRoundEnd(false);
+      const t = setTimeout(() => setShowRoundEnd(true), 2200);
+      playSound('win');
       const winner = gameState.players.find(p => p.id === gameState.winner);
       if (winner?.id === roomInfo.playerId) {
         // YOU won — big celebration!
@@ -229,6 +238,7 @@ export default function Game({ roomInfo }) {
           colors: ['#f4a522', '#fff'],
         });
       }
+      return () => clearTimeout(t);
     }
   }, [gameState?.status]);
 
@@ -538,7 +548,7 @@ function sortMeldCards(cards, type) {
   }
 
   // ── ROUND END ─────────────────────────────────────────────────────────────
-  if (gameState.status === 'roundEnd' || gameState.status === 'gameOver') {
+  if ((gameState.status === 'roundEnd' || gameState.status === 'gameOver') && showRoundEnd) {
     const isGameOver = gameState.status === 'gameOver';
     const winner = gameState.players.find(p => p.id === gameState.winner);
     return (
@@ -638,6 +648,44 @@ function sortMeldCards(cards, type) {
           </motion.div>
         </div>
       )}
+
+{/* Winner overlay — shown during 2s pause before scoreboard */}
+      {(gameState.status === 'roundEnd' || gameState.status === 'gameOver') && !showRoundEnd && (() => {
+        const winner = gameState.players.find(p => p.id === gameState.winner);
+        return (
+          <motion.div
+            initial={{ opacity:0 }}
+            animate={{ opacity:1 }}
+            style={{
+              position:'fixed', top:0, left:0, right:0, bottom:0,
+              background:'rgba(0,0,0,0.45)', zIndex:300,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              pointerEvents:'none',
+            }}>
+            {winner && (
+              <motion.div
+                initial={{ scale:0.6, opacity:0 }}
+                animate={{ scale:1, opacity:1 }}
+                transition={{ duration:0.4, ease:'backOut' }}
+                style={{ textAlign:'center', display:'flex', flexDirection:'column', alignItems:'center', gap:16 }}>
+                <motion.div
+                  animate={{ y: [0, -16, 0, -10, 0, -5, 0] }}
+                  transition={{ duration:1.1, ease:'easeInOut', repeat: Infinity }}>
+                  <Avatar id={winner.avatarId || 'sporty'} size={100} />
+                </motion.div>
+                <div style={{
+                  background:'rgba(244,165,34,0.95)', color:'#5a3000',
+                  fontFamily:"'Fredoka One',cursive",
+                  fontSize:36, padding:'14px 36px', borderRadius:24,
+                  boxShadow:'0 6px 30px rgba(244,165,34,0.5)',
+                }}>
+                  🎉 {winner.name} wins!
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+        );
+      })()}
 
 {/* Disconnect banner */}
       {disconnectInfo && (
@@ -780,26 +828,26 @@ function sortMeldCards(cards, type) {
             }}>
               {piouActive && (
                 <motion.div
-                  initial={{ scale:0, y:10 }}
+                  initial={{ scale:0, y:-10 }}
                   animate={{ scale:1, y:0 }}
                   exit={{ scale:0 }}
                   style={{
-                    position:'absolute', top:-36, left:'50%',
+                    position:'absolute', bottom:-32, left:'50%',
                     transform:'translateX(-50%)',
                     background:'#fff', color:'#e63946',
                     fontWeight:900, fontSize:13,
                     padding:'4px 10px', borderRadius:20,
-                    whiteSpace:'nowrap', zIndex:50,
+                    whiteSpace:'nowrap', zIndex:200,
                     boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
                   }}>
                   😤 PIOU!!!
                   <div style={{
-                    position:'absolute', bottom:-6, left:'50%',
+                    position:'absolute', top:-6, left:'50%',
                     transform:'translateX(-50%)',
                     width:0, height:0,
                     borderLeft:'6px solid transparent',
                     borderRight:'6px solid transparent',
-                    borderTop:'6px solid #fff',
+                    borderBottom:'6px solid #fff',
                   }} />
                 </motion.div>
               )}
