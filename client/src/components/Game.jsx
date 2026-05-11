@@ -624,7 +624,7 @@ function sortMeldCards(cards, type) {
         display:'flex', justifyContent:'space-between', alignItems:'center',
         background:'rgba(13,59,34,0.97)', backdropFilter:'blur(8px)',
         padding:'10px 20px', borderBottom:'1px solid rgba(255,255,255,0.07)',
-        flexShrink:0, zIndex:10,
+        flexShrink:0, zIndex:100,
       }}>
         <GameMenu
           gameState={gameState}
@@ -864,7 +864,6 @@ function sortMeldCards(cards, type) {
               onMouseEnter={e => { if(isMyTurn&&phase==='draw') e.currentTarget.style.transform='scale(1.4)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform='scale(1.15)'; }}
               onClick={() => {
-                // Not my turn + draw phase = STOP window → tap discard to STOP
                 if (!isMyTurn && phase === 'draw' && !me?.stopBanned && topDiscard && !gameState.stopCalledBy) {
                   enterStopMode();
                   return;
@@ -891,11 +890,26 @@ function sortMeldCards(cards, type) {
                 <p style={{ opacity:0.65, fontStyle:'italic', fontSize:14 }}>👆 Click the draw pile</p>
               )}
               {phase==='firstKeepOrDiscard' && (
-                <div style={{ display:'flex', gap:10 }}>
-                  <button className="btn-success" onClick={() => emit('firstKeepOrDiscard', { keep:true })}>✅ Keep</button>
-                  {!me?.hand?.some(c => c.id === newCardId && c.isJoker) && (
-                    <button className="btn-danger" onClick={() => emit('firstKeepOrDiscard', { keep:false })}>🗑 Discard & redraw</button>
-                  )}
+                <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10 }}>
+                  <p style={{ opacity:0.6, fontSize:13, fontWeight:700, letterSpacing:0.4, margin:0 }}>
+                    {me?.hand?.find(c => c.id === newCardId)?.isJoker
+                      ? '🃏 You drew a Joker — you must keep it'
+                      : 'Keep this card or draw another?'}
+                  </p>
+                  <div style={{ display:'flex', gap:12 }}>
+                    <button className="btn-success"
+                      style={{ fontSize:16, padding:'13px 30px' }}
+                      onClick={() => emit('firstKeepOrDiscard', { keep:true })}>
+                      Keep it
+                    </button>
+                    {!me?.hand?.some(c => c.id === newCardId && c.isJoker) && (
+                      <button className="btn-danger"
+                        style={{ fontSize:16, padding:'13px 30px' }}
+                        onClick={() => emit('firstKeepOrDiscard', { keep:false })}>
+                        Draw another
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               {phase==='play' && <>
