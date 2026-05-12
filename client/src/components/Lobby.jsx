@@ -205,7 +205,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
           fontSize:20, fontWeight:700, letterSpacing:1,
           boxShadow:'0 6px 20px rgba(244,165,34,0.4)',
         }}>
-          🎮 {t.createGame}
+          {t.createGame}
         </button>
         <button onClick={() => {
           if (!playerName.trim()) return setError(t.yourName);
@@ -217,7 +217,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
           color:'#fff', fontFamily:"'Fredoka One',cursive",
           fontSize:20, letterSpacing:1,
         }}>
-          🔗 {t.joinGame}
+          {t.joinGame}
         </button>
       </motion.div>
       <button onClick={() => window.location.reload()} style={{
@@ -240,7 +240,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
     }}>
       <motion.h2 initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }}
         style={{ fontFamily:"'Fredoka One',cursive", fontSize:32, color:'#f4a522' }}>
-        🎮 {t.createGame}
+        {t.createGame}
       </motion.h2>
 
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
@@ -313,7 +313,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
           fontSize:18, fontWeight:700,
           boxShadow:'0 4px 16px rgba(244,165,34,0.4)',
         }}>
-          🚀 {t.createRoom}
+          {t.createRoom}
         </button>
 
         <button onClick={() => { setError(''); setScreen('landing'); }} style={{
@@ -335,7 +335,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
     }}>
       <motion.h2 initial={{ y:-20, opacity:0 }} animate={{ y:0, opacity:1 }}
         style={{ fontFamily:"'Fredoka One',cursive", fontSize:32, color:'#f4a522' }}>
-        🔗 {t.joinGame}
+        {t.joinGame}
       </motion.h2>
 
       <motion.div initial={{ opacity:0, y:20 }} animate={{ opacity:1, y:0 }}
@@ -385,7 +385,7 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
         <div style={{ display:'flex', flexDirection:'column', gap:10, maxHeight:360, overflowY:'auto' }}>
           {filteredRooms.length === 0 ? (
             <div style={{ textAlign:'center', opacity:0.5, padding:40 }}>
-              <div style={{ fontSize:40, marginBottom:8 }}>🎴</div>
+              <div style={{ fontSize:40, marginBottom:8 }}>🃏</div>
               <p>{t.noGamesAvailable}</p>
               <p style={{ fontSize:13, marginTop:4 }}>{t.createOneOrWait}</p>
             </div>

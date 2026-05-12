@@ -8,6 +8,21 @@ import Card from './Card';
 import { Avatar, randomBotAvatar } from './Avatar';
 import T from '../translations';
 
+const REACTIONS = [
+  { emoji: '😂', text: "Haha!" },
+  { emoji: '🔥', text: "Let's go!" },
+  { emoji: '👏', text: "Nice one!" },
+  { emoji: '😮', text: "No way!" },
+  { emoji: '😅', text: "Phew!" },
+  { emoji: '💀', text: "I'm dead" },
+  { emoji: '🎉', text: "Yes!" },
+  { emoji: '👍', text: "GG!" },
+  { emoji: '😤', text: "PIOU!" },
+  { emoji: '❤️', text: "Love it!" },
+  { emoji: '🫡', text: "Respect!" },
+  { emoji: '😡', text: "No mercy!" },
+];
+
 let _isMuted = false;
 function playSound(type) {
   const files = {
@@ -112,15 +127,24 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     prevGameStateRef.current = gameState;
     if (!prev || !gameState || gameState.status !== 'playing') return;
 
-    const opponentTurn = gameState.players[gameState.currentPlayerIndex]?.id !== roomInfo.playerId;
-    const opponentY = window.innerHeight * 0.2;
-    const opponentX = window.innerWidth / 2;
+    const currentOpponent = gameState.players[gameState.currentPlayerIndex];
+    const opponentTurn = currentOpponent?.id !== roomInfo.playerId;
+
+    function getOpponentCenter(playerId) {
+      const el = document.querySelector(`[data-player-id="${playerId}"]`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+      }
+      return { x: window.innerWidth / 2, y: window.innerHeight * 0.12 };
+    }
 
     // Opponent drew from pile
     if (opponentTurn && gameState.drawPile.length < prev.drawPile.length && drawPileRef.current) {
       const r = drawPileRef.current.getBoundingClientRect();
+      const { x, y } = getOpponentCenter(currentOpponent.id);
       setFlyAnim({ fromX: r.left + r.width / 2, fromY: r.top + r.height / 2,
-        toX: opponentX, toY: opponentY, hidden: true });
+        toX: x, toY: y, hidden: true });
       setTimeout(() => setFlyAnim(null), 450);
       return;
     }
@@ -128,8 +152,9 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     // Opponent drew from discard
     if (opponentTurn && gameState.discardPile.length < prev.discardPile.length && discardPileRef.current) {
       const r = discardPileRef.current.getBoundingClientRect();
+      const { x, y } = getOpponentCenter(currentOpponent.id);
       setFlyAnim({ fromX: r.left + r.width / 2, fromY: r.top + r.height / 2,
-        toX: opponentX, toY: opponentY, hidden: true });
+        toX: x, toY: y, hidden: true });
       setTimeout(() => setFlyAnim(null), 450);
       return;
     }
@@ -138,7 +163,8 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     if (gameState.lastDiscardedBy && gameState.lastDiscardedBy !== roomInfo.playerId &&
         gameState.lastDiscardedBy !== prev.lastDiscardedBy && discardPileRef.current) {
       const r = discardPileRef.current.getBoundingClientRect();
-      setFlyAnim({ fromX: opponentX, fromY: opponentY,
+      const { x, y } = getOpponentCenter(gameState.lastDiscardedBy);
+      setFlyAnim({ fromX: x, fromY: y,
         toX: r.left + r.width / 2, toY: r.top + r.height / 2, hidden: true });
       setTimeout(() => setFlyAnim(null), 400);
     }
@@ -178,10 +204,19 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       msg(`✅ ${playerName} reconnected!`);
     });
 
-    socket.on('reaction', ({ playerId, playerName, avatarId, emoji }) => {
+    socket.on('reaction', ({ playerId, playerName, emoji, text }) => {
       const id = Date.now() + Math.random();
-      const x = 15 + Math.random() * 70;
-      setReactions(prev => [...prev, { id, playerId, playerName, avatarId, emoji, x }]);
+      let cx, cy;
+      const el = document.querySelector(`[data-player-id="${playerId}"]`);
+      if (el) {
+        const rect = el.getBoundingClientRect();
+        cx = rect.left + rect.width / 2;
+        cy = rect.bottom;
+      } else {
+        cx = window.innerWidth / 2;
+        cy = window.innerHeight - 220;
+      }
+      setReactions(prev => [...prev, { id, playerId, playerName, emoji, text, cx, cy }]);
       setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2800);
     });
 
@@ -511,7 +546,6 @@ function sortMeldCards(cards, type) {
         {/* Header */}
         <motion.div initial={{ y:-24, opacity:0 }} animate={{ y:0, opacity:1 }}
           transition={{ delay:0.1 }} style={{ textAlign:'center' }}>
-          <div style={{ fontSize:44, marginBottom:6 }}>🎴</div>
           <h2 style={{ fontFamily:"'Fredoka One',cursive", fontSize:34, marginBottom:4 }}>
             {revealed ? `${winner?.name ?? 'Someone'} deals!` : 'Pick a card!'}
           </h2>
@@ -930,25 +964,27 @@ function sortMeldCards(cards, type) {
                   position:'absolute', top:'calc(100% + 8px)', right:0,
                   background:'rgba(15,74,42,0.98)', border:'1px solid rgba(255,255,255,0.15)',
                   borderRadius:14, padding:10, zIndex:500,
-                  display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6,
+                  display:'grid', gridTemplateColumns:'repeat(2,1fr)', gap:6, width:220,
                   boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
                 }}>
-                {['😂','😮','🔥','👏','😅','💀','🤣','😤','🎉','👍','❤️','🫡'].map(emoji => (
+                {REACTIONS.map(({ emoji, text }) => (
                   <button key={emoji}
                     onClick={() => {
-                      socket.emit('sendReaction', { emoji });
+                      socket.emit('sendReaction', { emoji, text });
                       setShowEmojiPicker(false);
                     }}
                     style={{
                       background:'rgba(255,255,255,0.07)', border:'none',
-                      borderRadius:8, padding:'6px', fontSize:22,
+                      borderRadius:8, padding:'7px 10px', fontSize:13,
                       cursor:'pointer', transition:'all 0.15s',
-                      lineHeight:1,
+                      display:'flex', alignItems:'center', gap:6,
+                      color:'#fff', fontWeight:600, textAlign:'left',
                     }}
                     onMouseEnter={e => e.currentTarget.style.background='rgba(244,165,34,0.25)'}
                     onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
                   >
-                    {emoji}
+                    <span style={{ fontSize:20 }}>{emoji}</span>
+                    <span>{text}</span>
                   </button>
                 ))}
               </motion.div>
@@ -962,20 +998,28 @@ function sortMeldCards(cards, type) {
         {reactions.map(r => (
           <motion.div key={r.id}
             initial={{ opacity:1, y:0, scale:0.5 }}
-            animate={{ opacity:0, y:-140, scale:1 }}
+            animate={{ opacity:0, y:-120, scale:1 }}
             exit={{ opacity:0 }}
             transition={{ duration:2.5, ease:'easeOut' }}
             style={{
-              position:'fixed', bottom:180, left:`${r.x}%`,
+              position:'fixed', left: r.cx, top: r.cy,
               transform:'translateX(-50%)',
               zIndex:900, pointerEvents:'none',
-              display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+              display:'flex', flexDirection:'column', alignItems:'center', gap:3,
             }}>
-            <div style={{ fontSize:36 }}>{r.emoji}</div>
             <div style={{
-              background:'rgba(0,0,0,0.6)', borderRadius:20,
-              padding:'2px 8px', fontSize:10, fontWeight:700,
-              color:'#fff', whiteSpace:'nowrap',
+              background:'rgba(15,40,25,0.92)', border:'1px solid rgba(255,255,255,0.15)',
+              borderRadius:20, padding:'5px 10px',
+              display:'flex', alignItems:'center', gap:6,
+              boxShadow:'0 4px 16px rgba(0,0,0,0.4)',
+            }}>
+              <span style={{ fontSize:22 }}>{r.emoji}</span>
+              <span style={{ fontSize:13, fontWeight:700, color:'#fff', whiteSpace:'nowrap' }}>{r.text}</span>
+            </div>
+            <div style={{
+              background:'rgba(0,0,0,0.5)', borderRadius:20,
+              padding:'1px 7px', fontSize:10, fontWeight:700,
+              color:'rgba(255,255,255,0.6)', whiteSpace:'nowrap',
             }}>{r.playerName}</div>
           </motion.div>
         ))}
@@ -995,7 +1039,7 @@ function sortMeldCards(cards, type) {
           const fanH = isMobileLayout ? 32 : 52;
           const maxFanW = isMobileLayout ? 80 : 130;
           return (
-            <div key={p.id} style={{
+            <div key={p.id} data-player-id={p.id} style={{
               background: isActive ? 'rgba(244,165,34,0.12)' : 'rgba(0,0,0,0.28)',
               border: `2px solid ${isActive ? '#f4a522' : 'rgba(255,255,255,0.08)'}`,
               borderRadius:14,
@@ -1278,7 +1322,7 @@ function sortMeldCards(cards, type) {
       </div>
 
       {/* ── HAND ── */}
-      <div style={{
+      <div data-player-id={roomInfo.playerId} style={{
         background:'rgba(13,59,34,0.97)', borderTop:'2px solid rgba(255,255,255,0.07)',
         padding:'12px 16px 12px 16px', paddingTop:28, flexShrink:0,
         overflow:'visible',

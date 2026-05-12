@@ -429,7 +429,7 @@ io.on('connection', (socket) => {
     callback?.({ success: true });
   });
 
-  socket.on('sendReaction', ({ emoji }) => {
+  socket.on('sendReaction', ({ emoji, text }) => {
     const room = rooms[socket.data.roomCode];
     if (!room) return;
     const player = room.players.find(p => p.id === socket.data.playerId);
@@ -439,6 +439,7 @@ io.on('connection', (socket) => {
       playerName: player.name,
       avatarId: player.avatarId,
       emoji,
+      text,
     });
   });
 
