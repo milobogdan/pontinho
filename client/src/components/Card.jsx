@@ -1,9 +1,9 @@
 const suitCode = { spades:'S', hearts:'H', diamonds:'D', clubs:'C' };
 
-function CardBack({ small, medium, onClick }) {
+function CardBack({ small, medium, tiny, onClick }) {
   const isMobile = window.innerWidth < 600;
-  const w = small ? 48 : medium ? (isMobile ? 48 : 60) : (isMobile ? 62 : 84);
-  const h = small ? 68 : medium ? (isMobile ? 68 : 86) : (isMobile ? 90 : 120);
+  const w = tiny ? 30 : small ? 48 : medium ? (isMobile ? 48 : 60) : (isMobile ? 62 : 84);
+  const h = tiny ? 42 : small ? 68 : medium ? (isMobile ? 68 : 86) : (isMobile ? 90 : 120);
   return (
     <div onClick={onClick} style={{
       width:w, height:h, borderRadius:7, flexShrink:0,
@@ -22,12 +22,12 @@ function CardBack({ small, medium, onClick }) {
   );
 }
 
-export default function Card({ card, selected, onClick, small, medium }) {
-  if (!card || card.hidden) return <CardBack small={small} medium={medium} onClick={onClick} />;
+export default function Card({ card, selected, onClick, small, medium, tiny }) {
+  if (!card || card.hidden) return <CardBack small={small} medium={medium} tiny={tiny} onClick={onClick} />;
 
   const isMobile = window.innerWidth < 600;
-  const w = small ? 48 : medium ? (isMobile ? 48 : 60) : (isMobile ? 62 : 84);
-  const h = small ? 68 : medium ? (isMobile ? 68 : 86) : (isMobile ? 90 : 120);
+  const w = tiny ? 30 : small ? 48 : medium ? (isMobile ? 48 : 60) : (isMobile ? 62 : 84);
+  const h = tiny ? 42 : small ? 68 : medium ? (isMobile ? 68 : 86) : (isMobile ? 90 : 120);
 
   if (card.isJoker) return (
     <div onClick={onClick} style={{

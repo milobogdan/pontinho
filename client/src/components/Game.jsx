@@ -813,186 +813,122 @@ function sortMeldCards(cards, type) {
       </div>
 
       {/* ── OPPONENTS ── */}
-      {(() => {
-        return isMobileLayout ? (
-          /* Mobile: compact single-row chips */
-          <div style={{
-            display:'flex', gap:6, padding:'6px 10px',
-            overflowX:'auto', flexShrink:0,
-            background:'rgba(13,59,34,0.97)',
-            scrollbarWidth:'none',
-          }}>
-            {others.map(p => {
-              const isActive = currentPlayer?.id === p.id;
-              const count = (p.hand || []).length;
-              const nameColor = !p.isBot ? '#fff' :
-                p.difficulty === 'easy' ? '#4caf50' :
-                p.difficulty === 'medium' ? '#f4a522' : '#e63946';
-              return (
-                <div key={p.id} style={{
-                  display:'flex', alignItems:'center', gap:6,
-                  background: isActive ? 'rgba(244,165,34,0.15)' : 'rgba(0,0,0,0.3)',
-                  border: `2px solid ${isActive ? '#f4a522' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius:50, padding:'4px 10px 4px 4px',
-                  transition:'all 0.3s', flexShrink:0,
-                  boxShadow: isActive ? '0 0 12px rgba(244,165,34,0.25)' : 'none',
-                  position:'relative',
-                }}>
-                  {piouActive && (
-                    <motion.div
-                      initial={{ scale:0, y:-10 }}
-                      animate={{ scale:1, y:0 }}
-                      exit={{ scale:0 }}
-                      style={{
-                        position:'absolute', bottom:-28, left:'50%',
-                        transform:'translateX(-50%)',
-                        background:'#fff', color:'#e63946',
-                        fontWeight:900, fontSize:11,
-                        padding:'3px 8px', borderRadius:20,
-                        whiteSpace:'nowrap', zIndex:200,
-                        boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
-                      }}>
-                      😤 PIOU!!!
-                      <div style={{
-                        position:'absolute', top:-5, left:'50%',
-                        transform:'translateX(-50%)',
-                        width:0, height:0,
-                        borderLeft:'5px solid transparent',
-                        borderRight:'5px solid transparent',
-                        borderBottom:'5px solid #fff',
-                      }} />
-                    </motion.div>
-                  )}
-                  <div style={{ position:'relative' }}>
-                    <Avatar id={p.avatarId || 'sporty'} size={28} />
+      <div style={{
+        display:'flex', gap: isMobileLayout ? 5 : 8,
+        padding: isMobileLayout ? '5px 8px' : '10px 16px',
+        justifyContent:'center', flexWrap:'wrap',
+        background:'rgba(13,59,34,0.97)', flexShrink:0,
+      }}>
+        {others.map(p => {
+          const isActive = currentPlayer?.id === p.id;
+          const avatarSize = isMobileLayout ? 22 : 40;
+          const cardW = isMobileLayout ? 30 : 48;
+          const fanH = isMobileLayout ? 32 : 52;
+          const maxFanW = isMobileLayout ? 80 : 130;
+          return (
+            <div key={p.id} style={{
+              background: isActive ? 'rgba(244,165,34,0.12)' : 'rgba(0,0,0,0.28)',
+              border: `2px solid ${isActive ? '#f4a522' : 'rgba(255,255,255,0.08)'}`,
+              borderRadius:14,
+              padding: isMobileLayout ? '5px 8px' : '8px 12px',
+              flex:1,
+              minWidth: isMobileLayout ? 80 : 130,
+              maxWidth: isMobileLayout ? 140 : 200,
+              transition:'all 0.3s',
+              boxShadow: isActive ? '0 0 20px rgba(244,165,34,0.2)' : 'none',
+              position:'relative',
+            }}>
+              {piouActive && (
+                <motion.div
+                  initial={{ scale:0, y:-10 }}
+                  animate={{ scale:1, y:0 }}
+                  exit={{ scale:0 }}
+                  style={{
+                    position:'absolute', bottom: isMobileLayout ? -24 : -32, left:'50%',
+                    transform:'translateX(-50%)',
+                    background:'#fff', color:'#e63946',
+                    fontWeight:900, fontSize: isMobileLayout ? 10 : 13,
+                    padding:'3px 8px', borderRadius:20,
+                    whiteSpace:'nowrap', zIndex:200,
+                    boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
+                  }}>
+                  😤 PIOU!!!
+                  <div style={{
+                    position:'absolute', top:-6, left:'50%',
+                    transform:'translateX(-50%)',
+                    width:0, height:0,
+                    borderLeft:'6px solid transparent',
+                    borderRight:'6px solid transparent',
+                    borderBottom:'6px solid #fff',
+                  }} />
+                </motion.div>
+              )}
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: isMobileLayout ? 3 : 6 }}>
+                <div style={{ display:'flex', alignItems:'center', gap: isMobileLayout ? 3 : 5 }}>
+                  <Avatar id={p.avatarId || 'sporty'} size={avatarSize} />
+                  <span style={{ fontWeight:800, fontSize: isMobileLayout ? 9 : 12,
+                    color: !p.isBot ? '#fff' :
+                      p.difficulty === 'easy' ? '#4caf50' :
+                      p.difficulty === 'medium' ? '#f4a522' : '#e63946',
+                    maxWidth: isMobileLayout ? 50 : 999,
+                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+                  }}>
+                    {p.name}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
+                  </span>
+                </div>
+                <span style={{ background:'rgba(244,165,34,0.25)', color:'#f4a522',
+                  fontWeight:800, fontSize: isMobileLayout ? 9 : 11,
+                  padding: isMobileLayout ? '1px 5px' : '2px 7px', borderRadius:20 }}>
+                  {p.totalScore}
+                </span>
+              </div>
+              {(() => {
+                const count = (p.hand || []).length;
+                const offset = count <= 1 ? 0 : Math.min(isMobileLayout ? 8 : 12, (maxFanW - cardW) / (count - 1));
+                const totalW = count > 0 ? cardW + (count - 1) * offset : cardW;
+                return (
+                  <div style={{ position:'relative', height:fanH, width:totalW, marginTop: isMobileLayout ? 2 : 4 }}>
+                    {(p.hand || []).map((c, i) => (
+                      <motion.div key={c.id ?? i}
+                        initial={{ opacity:0, x:-10 }}
+                        animate={{ opacity:1, x:0 }}
+                        transition={{ duration:0.25, delay: i * 0.04 }}
+                        style={{ position:'absolute', left: i * offset, top:0, zIndex:i }}>
+                        <Card card={c} small={!isMobileLayout} tiny={isMobileLayout} />
+                      </motion.div>
+                    ))}
                     <div style={{
-                      position:'absolute', top:-4, right:-4, zIndex:50,
+                      position:'absolute', top:-5, right:-8, zIndex:50,
                       background:'#f4a522', color:'#1a1a1a',
-                      borderRadius:'50%', width:16, height:16,
+                      borderRadius:'50%',
+                      width: isMobileLayout ? 15 : 20,
+                      height: isMobileLayout ? 15 : 20,
                       display:'flex', alignItems:'center', justifyContent:'center',
-                      fontSize:9, fontWeight:900,
-                      boxShadow:'0 1px 4px rgba(0,0,0,0.4)',
-                    }}>{count}</div>
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', lineHeight:1.2 }}>
-                    <span style={{ fontWeight:800, fontSize:11, color: nameColor, maxWidth:70, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      {p.name}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
-                    </span>
-                    <span style={{ fontSize:10, color:'#f4a522', fontWeight:700 }}>
-                      {p.totalScore} pts{p.stopBanned ? ' 😤' : ''}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          /* Desktop: full cards panel */
-          <div style={{
-            display:'flex', gap:8, padding:'10px 16px',
-            justifyContent:'center', flexWrap:'wrap',
-            background:'rgba(13,59,34,0.97)', flexShrink:0,
-          }}>
-            {others.map(p => {
-              const isActive = currentPlayer?.id === p.id;
-              return (
-                <div key={p.id} style={{
-                  background: isActive ? 'rgba(244,165,34,0.12)' : 'rgba(0,0,0,0.28)',
-                  border: `2px solid ${isActive ? '#f4a522' : 'rgba(255,255,255,0.08)'}`,
-                  borderRadius:14, padding:'8px 12px',
-                  flex:1, minWidth:130, maxWidth:200,
-                  transition:'all 0.3s',
-                  boxShadow: isActive ? '0 0 20px rgba(244,165,34,0.2)' : 'none',
-                  position:'relative',
-                }}>
-                  {piouActive && (
-                    <motion.div
-                      initial={{ scale:0, y:-10 }}
-                      animate={{ scale:1, y:0 }}
-                      exit={{ scale:0 }}
-                      style={{
-                        position:'absolute', bottom:-32, left:'50%',
-                        transform:'translateX(-50%)',
-                        background:'#fff', color:'#e63946',
-                        fontWeight:900, fontSize:13,
-                        padding:'4px 10px', borderRadius:20,
-                        whiteSpace:'nowrap', zIndex:200,
-                        boxShadow:'0 2px 8px rgba(0,0,0,0.3)',
-                      }}>
-                      😤 PIOU!!!
-                      <div style={{
-                        position:'absolute', top:-6, left:'50%',
-                        transform:'translateX(-50%)',
-                        width:0, height:0,
-                        borderLeft:'6px solid transparent',
-                        borderRight:'6px solid transparent',
-                        borderBottom:'6px solid #fff',
-                      }} />
-                    </motion.div>
-                  )}
-                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:5 }}>
-                      <Avatar id={p.avatarId || 'sporty'} size={40} />
-                      <span style={{ fontWeight:800, fontSize:12,
-                        color: !p.isBot ? '#fff' :
-                          p.difficulty === 'easy' ? '#4caf50' :
-                          p.difficulty === 'medium' ? '#f4a522' : '#e63946'
-                      }}>
-                        {p.name}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
-                      </span>
+                      fontSize: isMobileLayout ? 8 : 10, fontWeight:900,
+                      boxShadow:'0 2px 6px rgba(0,0,0,0.4)',
+                    }}>
+                      {count}
                     </div>
-                    <span style={{ background:'rgba(244,165,34,0.25)', color:'#f4a522',
-                      fontWeight:800, fontSize:11, padding:'2px 7px', borderRadius:20 }}>
-                      {p.totalScore} pts
-                    </span>
                   </div>
-                  {(() => {
-                    const count = (p.hand || []).length;
-                    const maxW  = 130;
-                    const offset = count <= 1 ? 0 : Math.min(12, (maxW - 48) / (count - 1));
-                    const totalW = count > 0 ? 48 + (count - 1) * offset : 48;
-                    return (
-                      <div style={{ position:'relative', height:52, width:totalW, marginTop:4 }}>
-                        {(p.hand || []).map((c, i) => (
-                          <motion.div key={c.id ?? i}
-                          initial={{ opacity:0, x:-10 }}
-                          animate={{ opacity:1, x:0 }}
-                          transition={{ duration:0.25, delay: i * 0.04 }}
-                          style={{ position:'absolute', left: i * offset, top:0, zIndex:i }}>
-                            <Card card={c} small />
-                          </motion.div>
-                        ))}
-                        <div style={{
-                          position:'absolute', top:-6, right:-10, zIndex:50,
-                          background:'#f4a522', color:'#1a1a1a',
-                          borderRadius:'50%', width:20, height:20,
-                          display:'flex', alignItems:'center', justifyContent:'center',
-                          fontSize:10, fontWeight:900,
-                          boxShadow:'0 2px 6px rgba(0,0,0,0.4)',
-                        }}>
-                          {count}
-                        </div>
-                      </div>
-                    );
-                  })()}
-                  {p.stopBanned && (
-                    <motion.div
-                      initial={{ scale:0 }}
-                      animate={{ scale:1 }}
-                      style={{
-                        fontSize:11, fontWeight:900, color:'#ff8080', marginTop:3,
-                        background:'rgba(230,57,70,0.15)', padding:'2px 8px',
-                        borderRadius:20, textAlign:'center',
-                      }}>
-                      😤 PIOU!!!
-                    </motion.div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
+                );
+              })()}
+              {p.stopBanned && (
+                <motion.div
+                  initial={{ scale:0 }}
+                  animate={{ scale:1 }}
+                  style={{
+                    fontSize: isMobileLayout ? 9 : 11, fontWeight:900, color:'#ff8080',
+                    marginTop: isMobileLayout ? 2 : 3,
+                    background:'rgba(230,57,70,0.15)', padding:'2px 6px',
+                    borderRadius:20, textAlign:'center',
+                  }}>
+                  😤 PIOU!!!
+                </motion.div>
+              )}
+            </div>
+          );
+        })}
+      </div>
 
       {/* ── TABLE SURFACE ── */}
       <div style={{
