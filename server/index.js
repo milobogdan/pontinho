@@ -215,21 +215,20 @@ io.on('connection', (socket) => {
     if (room.players.length >= 8) return callback({ error: 'Room is full' });
 
     const botId = `bot-${Date.now()}`;
-    const BOT_NAMES = [
-      'Ana', 'Leo', 'Bia', 'Kai', 'Gio', 'Mia', 'Tom', 'Zoe',
-      'Max', 'Lia', 'Ben', 'Ava', 'Ryu', 'Ivy', 'Sam', 'Noa',
-      'Lou', 'Eva', 'Rex', 'Sky', 'Rio', 'Ada', 'Jay', 'Lua',
-    ];
+    const MALE_AVATARS = new Set(['sporty','nerdy','cool','grandpa','kid']);
+    const MALE_NAMES   = ['Marco','Thiago','Diego','Lucas','Pedro','Bruno','Caio','Leo','Luca','Nico','Tomas','Andre','Vitor','Davi','Igor','Mateo','Dante','Beto','Felipe','Carlos','Murilo','Sergio','Marcos','Rafael','Max','Rafa','Joao','Kaio'];
+    const FEMALE_NAMES = ['Bia','Sara','Ana','Mia','Julia','Maria','Luiza','Camila','Clara','Laura','Sofia','Livia','Alice','Bruna','Carol','Paula','Lara','Nina','Vera','Rosa','Yasmin','Renata','Flavia','Marcia','Gabi','Nadia'];
     const usedNames = room.players.map(p => p.name);
-    const available = BOT_NAMES.filter(n => !usedNames.includes(n));
     const AVATAR_IDS = ['sporty','nerdy','cool','grandpa','kid','curly','ponytail','grandma','business','pigtails'];
     const usedAvatars = room.players.map(p => p.avatarId).filter(Boolean);
     const availableAvatars = AVATAR_IDS.filter(id => !usedAvatars.includes(id));
     const botAvatarId = availableAvatars.length > 0
       ? availableAvatars[Math.floor(Math.random() * availableAvatars.length)]
       : AVATAR_IDS[Math.floor(Math.random() * AVATAR_IDS.length)];
-    const botName = available.length > 0
-      ? available[Math.floor(Math.random() * available.length)]
+    const isMale = MALE_AVATARS.has(botAvatarId);
+    const namePool = (isMale ? MALE_NAMES : FEMALE_NAMES).filter(n => !usedNames.includes(n));
+    const botName = namePool.length > 0
+      ? namePool[Math.floor(Math.random() * namePool.length)]
       : `Bot${room.players.length}`;
     room.players.push({ id: botId, socketId: null, name: botName, isBot: true, difficulty, avatarId: botAvatarId });
 
