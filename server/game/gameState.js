@@ -7,6 +7,31 @@ let meldCounter = 0;
 const newMeldId = () => `meld-${++meldCounter}`;
 const getCurrentPlayer = (game) => game.players[game.currentPlayerIndex];
 
+function getCombos(arr, size) {
+  if (size === 0) return [[]];
+  if (arr.length < size) return [];
+  const [head, ...tail] = arr;
+  return [
+    ...getCombos(tail, size - 1).map(c => [head, ...c]),
+    ...getCombos(tail, size),
+  ];
+}
+
+function canGoOut(cards) {
+  if (cards.length === 0) return true;
+  if (cards.length === 1) return true; // last card gets discarded
+  const max = Math.min(cards.length, 7);
+  for (let size = max; size >= 3; size--) {
+    for (const combo of getCombos(cards, size)) {
+      if (isValidSet(combo) || isValidWinningRun(combo)) {
+        const rest = cards.filter(c => !combo.some(m => m.id === c.id));
+        if (canGoOut(rest)) return true;
+      }
+    }
+  }
+  return false;
+}
+
 
 function shufflePile(deck) {
   const d = [...deck];
@@ -216,7 +241,7 @@ export function playMeld(game, playerId, cardIds) {
   }
 
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1;
+  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
   const isStopPhase = !!game.stopCalledBy;
   const valid = (isWinningMove || isStopPhase)
     ? (isValidSet(cards) || isValidWinningRun(cards))
@@ -258,7 +283,7 @@ export function extendMeld(game, playerId, meldId, cardIds) {
 
   // Check if this would empty the hand (winning move) — allow joker at end
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1;
+  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
   const combined = [...meld.cards, ...cards];
   const valid = (isWinningMove || game.stopCalledBy)
     ? (isValidExtension(meld.cards, cards) || isValidWinningRun(combined))

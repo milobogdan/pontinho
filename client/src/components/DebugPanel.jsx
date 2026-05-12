@@ -91,6 +91,21 @@ const SCENARIOS = [
       ]
     }],
   },
+  {
+    name: '🧩 Multi-meld win (Joker start/end)',
+    desc: 'Go out via 3 melds: 9♦ Jo J♦ → A♠ 2♠ 3♠ → Jo 9♠ 10♠. Each meld must allow winning-run rules even though only the last empties the hand.',
+    hand: [
+      { id:'d1', suit:'diamonds', rank:'9',  value:9  },
+      { id:'d2', isJoker:true,    rank:'JOKER', suit:null, value:50 },
+      { id:'d3', suit:'diamonds', rank:'J',  value:11 },
+      { id:'d4', suit:'spades',   rank:'A',  value:1  },
+      { id:'d5', suit:'spades',   rank:'2',  value:2  },
+      { id:'d6', suit:'spades',   rank:'3',  value:3  },
+      { id:'d7', isJoker:true,    rank:'JOKER', suit:null, value:50 },
+      { id:'d8', suit:'spades',   rank:'9',  value:9  },
+      { id:'d9', suit:'spades',   rank:'10', value:10 },
+    ],
+  },
 ];
 
 function MiniCard({ card, selected, onClick }) {
