@@ -426,12 +426,23 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 
 ### 🔴 Important Fixes
 - First turn redesign (remove keep/discard buttons, float card visually between piles)
+- **Avatar bug**: guests joining a room show sporty.png for everyone until they press Ready — avatarId not sent correctly on join, only on ready
+- **Mute on mobile mutes all sounds**: the mute button should only mute background music, not sound effects (card, discard, meld, turn, piou etc.)
+- **Empty lobby persistence**: if host closes the browser without leaving properly, the lobby stays alive forever with no real players — server should auto-destroy rooms with no human players
 
 ### 🟡 UX Improvements
-- Longer bot names
+- **Opponent panel on mobile**: too large, takes too much screen space — needs to be more compact (smaller avatars, tighter layout)
+- **Round-end scoreboard**: show points gained this round next to each player's total (e.g. "+12")
+- **Longer bot names**: match male names to male avatars and female names to female avatars (coordinated with avatar gender list)
 - Card picking phase: show card values during reveal more dramatically
 
 ### 🟢 Features
+- **Bot AI overhaul** (high priority): bots need to play closer to real players
+  - Don't play melds when score is near 200 (e.g. ≥195 pts) — putting cards on the table only helps opponents; better to hold and win outright or at least not gift points
+  - Hard bot had 1 card left (a Joker) and didn't add it to a run to go out — must always check for winning moves before ending turn
+  - Easy/medium/hard should have meaningfully different strategies, not just timing delays
+  - Build toward runs and sets rather than playing random cards
+  - STOP decision logic needs to evaluate whether winning is actually achievable
 - Rules rewrite with visual examples
 - Save game vs bots (localStorage)
 - Score notebook (round-by-round history)
