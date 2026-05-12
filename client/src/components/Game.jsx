@@ -31,7 +31,9 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
   const [message, setMessage]     = useState('');
   const [handOrder, setHandOrder] = useState([]);
-  const [draggedId, setDraggedId]  = useState(null);
+  const [draggedId, setDraggedIdState] = useState(null);
+  const draggedIdRef = useRef(null);
+  function setDraggedId(id) { draggedIdRef.current = id; setDraggedIdState(id); }
   const [stopCountdown, setStopCountdown] = useState(120);
   const [piouActive, setPiouActive] = useState(false);
   const [newCardId, setNewCardId] = useState(null);
@@ -482,14 +484,15 @@ function sortMeldCards(cards, type) {
 
   function onDragOver(e, targetId) {
     e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
+    const dragged = draggedIdRef.current;
+    if (!dragged || dragged === targetId) return;
     setHandOrder(prev => {
-      const next     = [...prev];
-      const fromIdx  = next.indexOf(draggedId);
-      const toIdx    = next.indexOf(targetId);
+      const next    = [...prev];
+      const fromIdx = next.indexOf(dragged);
+      const toIdx   = next.indexOf(targetId);
       if (fromIdx === -1 || toIdx === -1) return prev;
       next.splice(fromIdx, 1);
-      next.splice(toIdx, 0, draggedId);
+      next.splice(toIdx, 0, dragged);
       return next;
     });
   }
