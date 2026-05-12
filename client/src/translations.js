@@ -124,6 +124,7 @@ const T = {
     off: 'OFF',
     rulesMenu: '📖 Rules',
     scoresMenu: 'Scores',
+
     leaveGame: 'Leave Game',
     scoreboardMenu: '🏆 Scoreboard',
     cardsInHand: (n) => `${n} cards in hand`,
@@ -225,6 +226,7 @@ const T = {
     off: 'OPRIT',
     rulesMenu: '📖 Reguli',
     scoresMenu: 'Scoruri',
+
     leaveGame: 'Părăsește Jocul',
     scoreboardMenu: '🏆 Clasament',
     cardsInHand: (n) => `${n} cărți în mână`,
@@ -326,6 +328,7 @@ const T = {
     off: 'DESLIGADO',
     rulesMenu: '📖 Regras',
     scoresMenu: 'Pontuações',
+
     leaveGame: 'Sair do Jogo',
     scoreboardMenu: '🏆 Placar',
     cardsInHand: (n) => `${n} cartas na mão`,

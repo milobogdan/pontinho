@@ -168,9 +168,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
 
               {/* Rules panel */}
               {panel === 'rules' && (
-                
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-                >
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                   <button onClick={() => setPanel(null)} style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '10px 16px', background: 'none', border: 'none',
@@ -206,8 +204,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
 
               {/* Scores panel */}
               {panel === 'scores' && (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-                >
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                   <button onClick={() => setPanel(null)} style={{
                     display: 'flex', alignItems: 'center', gap: 6,
                     padding: '10px 16px', background: 'none', border: 'none',

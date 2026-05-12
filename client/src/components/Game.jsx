@@ -234,16 +234,20 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     }
   }, [gameState?.status]);
 
-  // Capture scores at the start of each playing phase so we can show round delta
+  // Capture scores at round start; record history at round end
   const prevStatusRef2 = useRef(null);
   useEffect(() => {
     if (!gameState) return;
-    if (gameState.status === 'playing' && prevStatusRef2.current !== 'playing') {
+    const status = gameState.status;
+    const prev = prevStatusRef2.current;
+
+    if (status === 'playing' && prev !== 'playing') {
       const scores = {};
       gameState.players.forEach(p => { scores[p.id] = p.totalScore; });
       setRoundStartScores(scores);
     }
-    prevStatusRef2.current = gameState.status;
+
+    prevStatusRef2.current = status;
   }, [gameState]);
 
   useEffect(() => {
@@ -493,53 +497,76 @@ function sortMeldCards(cards, type) {
           </>}
         </motion.div>
 
-        {/* Cards — overlapping fan */}
-        <div style={{ display:'flex', justifyContent:'center', alignItems:'flex-end', paddingTop:30, flexWrap:'wrap', maxWidth:'100vw', overflow:'hidden' }}>
-          {(gameState.pickingCards || []).map((card, idx) => {
-            const pickedEntry = Object.entries(gameState.playerPicks || {}).find(([,c]) => c?.id === card.id);
-            const isTaken  = !!pickedEntry;
-            const pickedBy = pickedEntry ? gameState.players.find(p => p.id === pickedEntry[0]) : null;
-            const isMyPick = myPick?.id === card.id;
-            const isWinner = revealed && card.id === gameState.playerPicks?.[gameState.pickingWinnerId]?.id;
-            const canPick  = !myPick && !isTaken;
-            const TILTS    = [-13, 8, -17, 5, 14, -7, 11, -4, 16, -10, 6, -15, 9, -3, 12, -8];
-            const tilt     = TILTS[idx % TILTS.length];
-            return (
-              <motion.div key={card.id}
-                initial={{ y:-40, opacity:0 }}
-                animate={{
-                  opacity: 1,
-                  y: isMyPick ? -22 : 0,
-                  rotate: isTaken ? 0 : tilt,
-                  zIndex: isMyPick ? 100 : isTaken ? 50 : idx,
-                }}
-                whileHover={canPick ? { y:-14, rotate:0, zIndex:200 } : {}}
-                transition={{ duration:0.3, delay: idx * 0.04 }}
-                style={{
-                  marginLeft: idx === 0 ? 0 : (window.innerWidth < 600 ? -36 : -28),
-                  cursor: canPick ? 'pointer' : 'default',
-                  position:'relative',
-                  transformOrigin:'bottom center',
-                  filter: isWinner
-                    ? 'drop-shadow(0 0 14px rgba(244,165,34,1)) drop-shadow(0 0 28px rgba(244,165,34,0.5))'
-                    : isMyPick ? 'drop-shadow(0 0 10px rgba(244,165,34,0.8))' : 'none',
-                }}
-                onClick={() => canPick && socket.emit('pickCard', { cardId:card.id }, () => {})}>
-                <Card card={isTaken ? card : { hidden:true }} />
-                {pickedBy && (
-                  <motion.div initial={{ opacity:0, y:4 }} animate={{ opacity:1, y:0 }}
-                    style={{ marginTop:6, display:'flex', flexDirection:'column', alignItems:'center', gap:2 }}>
-                    <Avatar id={pickedBy.avatarId} size={26} />
-                    <p style={{ fontSize:10, fontWeight:700, whiteSpace:'nowrap',
-                      color: isMyPick || isWinner ? '#f4a522' : 'rgba(255,255,255,0.65)' }}>
-                      {isWinner ? '👑 ' : ''}{pickedBy.name}
-                    </p>
+        {/* Cards — overlapping fan, dynamically sized to never overflow */}
+        {(() => {
+          const cards = gameState.pickingCards || [];
+          const count = cards.length;
+          const isMob = window.innerWidth < 600;
+          const cardW = isMob ? 62 : 84;
+          const cardH = isMob ? 90 : 120;
+          // Max fan width = viewport minus padding; step shrinks to fit
+          const maxFanW = window.innerWidth - 48;
+          const step = count > 1
+            ? Math.min(isMob ? 44 : 38, Math.floor((maxFanW - cardW) / (count - 1)))
+            : 0;
+          const fanW = count > 0 ? cardW + step * (count - 1) : cardW;
+          const TILTS = [-13, 8, -17, 5, 14, -7, 11, -4, 16, -10, 6, -15, 9, -3, 12, -8];
+
+          return (
+            <div style={{
+              position: 'relative',
+              width: fanW,
+              height: cardH + 70,
+              marginTop: 20,
+              flexShrink: 0,
+            }}>
+              {cards.map((card, idx) => {
+                const pickedEntry = Object.entries(gameState.playerPicks || {}).find(([,c]) => c?.id === card.id);
+                const isTaken  = !!pickedEntry;
+                const pickedBy = pickedEntry ? gameState.players.find(p => p.id === pickedEntry[0]) : null;
+                const isMyPick = myPick?.id === card.id;
+                const isWinner = revealed && card.id === gameState.playerPicks?.[gameState.pickingWinnerId]?.id;
+                const canPick  = !myPick && !isTaken;
+                const tilt     = TILTS[idx % TILTS.length];
+                return (
+                  <motion.div key={card.id}
+                    initial={{ y: -40, opacity: 0 }}
+                    animate={{
+                      opacity: 1,
+                      y: isMyPick ? -22 : 0,
+                      rotate: isTaken ? 0 : tilt,
+                      zIndex: isMyPick ? 100 : isTaken ? 50 : idx,
+                    }}
+                    whileHover={canPick ? { y: -14, rotate: 0, zIndex: 200 } : {}}
+                    transition={{ duration: 0.3, delay: idx * 0.04 }}
+                    style={{
+                      position: 'absolute',
+                      left: idx * step,
+                      top: 0,
+                      cursor: canPick ? 'pointer' : 'default',
+                      transformOrigin: 'bottom center',
+                      filter: isWinner
+                        ? 'drop-shadow(0 0 14px rgba(244,165,34,1)) drop-shadow(0 0 28px rgba(244,165,34,0.5))'
+                        : isMyPick ? 'drop-shadow(0 0 10px rgba(244,165,34,0.8))' : 'none',
+                    }}
+                    onClick={() => canPick && socket.emit('pickCard', { cardId: card.id }, () => {})}>
+                    <Card card={isTaken ? card : { hidden: true }} />
+                    {pickedBy && (
+                      <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
+                        style={{ marginTop: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                        <Avatar id={pickedBy.avatarId} size={26} />
+                        <p style={{ fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap',
+                          color: isMyPick || isWinner ? '#f4a522' : 'rgba(255,255,255,0.65)' }}>
+                          {isWinner ? '👑 ' : ''}{pickedBy.name}
+                        </p>
+                      </motion.div>
+                    )}
                   </motion.div>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Status */}
         <AnimatePresence mode="wait">
