@@ -206,9 +206,7 @@ io.on('connection', (socket) => {
     // Tell everyone in the room who is here
     io.to(code).emit('playerList', getPlayerListData(room));
     console.log(`${playerName} joined room ${code}`);
-    callback({ success: true, playerId, 
-      players: room.players.map(p => ({ id: p.id, name: p.name, isBot: p.isBot })) 
-    });
+    callback({ success: true, playerId, players: getPlayerListData(room) });
  }); 
   // ── ADD BOT ────────────────────────────────────────────────────
   socket.on('addBot', ({ difficulty }, callback) => {
@@ -642,16 +640,15 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.socketId === socket.id);
     if (!player) return;
 
-    // ── LOBBY DISCONNECT ──────────────────────────────────────
-    if (!room.game || room.game.status === 'waiting' || room.game.status === 'picking') {
+    // ── LOBBY DISCONNECT (also roundEnd/gameOver — no need for bot replacement) ──
+    const inActiveGame = room.game && room.game.status === 'playing';
+    if (!inActiveGame) {
       room.players = room.players.filter(p => p.socketId !== socket.id);
-      
+
       // Transfer host if host left
-      if (room.players.length > 0 && room.players.filter(p => !p.isBot).length > 0) {
+      if (room.players.filter(p => !p.isBot).length > 0) {
         const newHost = room.players.find(p => !p.isBot);
-        if (newHost) {
-          io.to(newHost.socketId).emit('youAreHost');
-        }
+        if (newHost) io.to(newHost.socketId).emit('youAreHost');
       }
 
       io.to(code).emit('playerList', getPlayerListData(room));
@@ -659,7 +656,7 @@ io.on('connection', (socket) => {
 
       if (room.players.filter(p => !p.isBot).length === 0) {
         delete rooms[code];
-        console.log(`Room ${code} deleted (empty)`);
+        console.log(`Room ${code} deleted (no humans left)`);
       }
       return;
     }

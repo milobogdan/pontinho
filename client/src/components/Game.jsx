@@ -10,7 +10,6 @@ import T from '../translations';
 
 let _isMuted = false;
 function playSound(type) {
-  if (_isMuted) return;
   const files = {
     card:    '/sounds/card.wav',
     meld:    '/sounds/win.wav',
