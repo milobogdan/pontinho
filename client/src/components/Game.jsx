@@ -47,6 +47,7 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
   const [isMuted, setIsMuted] = useState(false);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
+  const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
   const [roundStartScores, setRoundStartScores] = useState({});
   const [reactions, setReactions] = useState([]);
@@ -231,8 +232,28 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   useEffect(() => {
     if (gameState?.status !== 'roundEnd' && gameState?.status !== 'gameOver') {
       setShowRoundEnd(false);
+      setNextRoundCountdown(null);
     }
   }, [gameState?.status]);
+
+  useEffect(() => {
+    if (!showRoundEnd || gameState?.status !== 'roundEnd') {
+      setNextRoundCountdown(null);
+      return;
+    }
+    setNextRoundCountdown(5);
+    const interval = setInterval(() => {
+      setNextRoundCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          emit('startNextRound');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [showRoundEnd, gameState?.status]);
 
   // Capture scores at round start; record history at round end
   const prevStatusRef2 = useRef(null);
@@ -687,9 +708,18 @@ function sortMeldCards(cards, type) {
               transition={{ delay:0.6, duration:0.4, ease:'backOut' }}
               whileHover={{ scale:1.05 }}
               whileTap={{ scale:0.95 }}
-              style={{ fontSize:18, padding:'14px 36px' }}
-              onClick={() => emit('startNextRound')}>
+              style={{ fontSize:18, padding:'14px 36px', display:'flex', alignItems:'center', gap:10 }}
+              onClick={() => { setNextRoundCountdown(null); emit('startNextRound'); }}>
               {t.nextRound}
+              {nextRoundCountdown !== null && (
+                <span style={{
+                  background:'rgba(0,0,0,0.25)', borderRadius:20,
+                  padding:'2px 10px', fontSize:15, fontWeight:800,
+                  minWidth:28, textAlign:'center',
+                }}>
+                  {nextRoundCountdown}
+                </span>
+              )}
             </motion.button>
           )}
           {isGameOver && (
