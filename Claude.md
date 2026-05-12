@@ -428,10 +428,6 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 
 ### 🔴 Important Fixes
 - First turn redesign (remove keep/discard buttons, float card visually between piles)
-- **Avatar bug**: guests joining a room show sporty.png for everyone until they press Ready — avatarId not sent correctly on join, only on ready
-
-### 🟡 UX Improvements
-- Card picking phase: show card values during reveal more dramatically
 
 ### 🟢 Features
 - Rules rewrite with visual examples
@@ -457,6 +453,8 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Bot names gender-matched to avatar (Brazilian/international, ≤6 chars)
 - Decorative emojis removed from lobby/create/join/pick-a-card screens
 - Last card drag fix: draggedId backed by ref to avoid stale closure
+- Avatar bug fixed: avatarId sent correctly on join
+- Card picking phase: more dramatic reveal with animated card values
 
 ---
 
