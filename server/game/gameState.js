@@ -19,7 +19,7 @@ function getCombos(arr, size) {
 
 function canGoOut(cards) {
   if (cards.length === 0) return true;
-  if (cards.length === 1) return true; // last card gets discarded
+  if (cards.length === 1) return !cards[0].isJoker; // last card gets discarded; Joker can't be discarded
   const max = Math.min(cards.length, 7);
   for (let size = max; size >= 3; size--) {
     for (const combo of getCombos(cards, size)) {
