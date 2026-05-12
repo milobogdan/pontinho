@@ -429,6 +429,19 @@ io.on('connection', (socket) => {
     callback?.({ success: true });
   });
 
+  socket.on('sendReaction', ({ emoji }) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return;
+    const player = room.players.find(p => p.id === socket.data.playerId);
+    if (!player) return;
+    io.to(room.code).emit('reaction', {
+      playerId: socket.data.playerId,
+      playerName: player.name,
+      avatarId: player.avatarId,
+      emoji,
+    });
+  });
+
   function getPlayerListData(room) {
   return room.players.map(p => ({
     id: p.id, name: p.name, isBot: p.isBot,

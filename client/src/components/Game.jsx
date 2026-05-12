@@ -48,6 +48,9 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   const [isMuted, setIsMuted] = useState(false);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
+  const [roundStartScores, setRoundStartScores] = useState({});
+  const [reactions, setReactions] = useState([]);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const isDebug = new URLSearchParams(window.location.search).get('debug') === 'true';
 
   useEffect(() => {
@@ -172,6 +175,13 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       msg(`✅ ${playerName} reconnected!`);
     });
 
+    socket.on('reaction', ({ playerId, playerName, avatarId, emoji }) => {
+      const id = Date.now() + Math.random();
+      const x = 15 + Math.random() * 70;
+      setReactions(prev => [...prev, { id, playerId, playerName, avatarId, emoji, x }]);
+      setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2800);
+    });
+
     socket.emit('getGameState', (res) => {
       if (res?.state) setGameState(res.state);
     });
@@ -180,6 +190,7 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       socket.off('stopTimeout');
       socket.off('playerDisconnected');
       socket.off('playerReconnected');
+      socket.off('reaction');
     };
   }, []);
 
@@ -222,6 +233,18 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       setShowRoundEnd(false);
     }
   }, [gameState?.status]);
+
+  // Capture scores at the start of each playing phase so we can show round delta
+  const prevStatusRef2 = useRef(null);
+  useEffect(() => {
+    if (!gameState) return;
+    if (gameState.status === 'playing' && prevStatusRef2.current !== 'playing') {
+      const scores = {};
+      gameState.players.forEach(p => { scores[p.id] = p.totalScore; });
+      setRoundStartScores(scores);
+    }
+    prevStatusRef2.current = gameState.status;
+  }, [gameState]);
 
   useEffect(() => {
     if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
@@ -605,10 +628,26 @@ function sortMeldCards(cards, type) {
                   {p.name}{p.isBot?' 🤖':''}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
                 </span>
               </div>
-              <span style={{ fontFamily:"'Fredoka One',cursive", fontSize:22,
-                color: rank === 0 ? '#f4a522' : '#fff' }}>
-                {p.totalScore} pts
-              </span>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                {(() => {
+                  const delta = p.totalScore - (roundStartScores[p.id] ?? p.totalScore);
+                  return delta > 0 ? (
+                    <span style={{ fontSize:13, fontWeight:700, color:'#ff8080',
+                      background:'rgba(230,57,70,0.15)', padding:'2px 7px', borderRadius:20 }}>
+                      +{delta}
+                    </span>
+                  ) : delta === 0 ? (
+                    <span style={{ fontSize:13, fontWeight:700, color:'#80ff80',
+                      background:'rgba(76,175,80,0.15)', padding:'2px 7px', borderRadius:20 }}>
+                      +0 🏆
+                    </span>
+                  ) : null;
+                })()}
+                <span style={{ fontFamily:"'Fredoka One',cursive", fontSize:22,
+                  color: rank === 0 ? '#f4a522' : '#fff' }}>
+                  {p.totalScore} pts
+                </span>
+              </div>
             </motion.div>
           ))}
         </div>
@@ -807,10 +846,80 @@ function sortMeldCards(cards, type) {
           {isMyTurn ? t.yourTurn : t.sTurn(currentPlayer?.name)}
         </motion.div>
 
-        <div style={{ fontFamily:"'Fredoka One',cursive", fontSize:18, opacity:0.8 }}>
-          {t.round} {gameState.round}
+        {/* Emoji reaction button */}
+        <div style={{ position:'relative' }}>
+          <button
+            onClick={() => setShowEmojiPicker(p => !p)}
+            style={{
+              background: showEmojiPicker ? 'rgba(244,165,34,0.25)' : 'rgba(255,255,255,0.1)',
+              border: `1px solid ${showEmojiPicker ? '#f4a522' : 'rgba(255,255,255,0.15)'}`,
+              borderRadius:10, padding:'6px 10px',
+              cursor:'pointer', fontSize:18, lineHeight:1,
+              transition:'all 0.2s',
+            }}>
+            💬
+          </button>
+          <AnimatePresence>
+            {showEmojiPicker && (
+              <motion.div
+                initial={{ opacity:0, scale:0.85, y:6 }}
+                animate={{ opacity:1, scale:1, y:0 }}
+                exit={{ opacity:0, scale:0.85, y:6 }}
+                transition={{ duration:0.15 }}
+                style={{
+                  position:'absolute', top:'calc(100% + 8px)', right:0,
+                  background:'rgba(15,74,42,0.98)', border:'1px solid rgba(255,255,255,0.15)',
+                  borderRadius:14, padding:10, zIndex:500,
+                  display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6,
+                  boxShadow:'0 8px 32px rgba(0,0,0,0.5)',
+                }}>
+                {['😂','😮','🔥','👏','😅','💀','🤣','😤','🎉','👍','❤️','🫡'].map(emoji => (
+                  <button key={emoji}
+                    onClick={() => {
+                      socket.emit('sendReaction', { emoji });
+                      setShowEmojiPicker(false);
+                    }}
+                    style={{
+                      background:'rgba(255,255,255,0.07)', border:'none',
+                      borderRadius:8, padding:'6px', fontSize:22,
+                      cursor:'pointer', transition:'all 0.15s',
+                      lineHeight:1,
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(244,165,34,0.25)'}
+                    onMouseLeave={e => e.currentTarget.style.background='rgba(255,255,255,0.07)'}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
+
+      {/* Floating reaction bubbles */}
+      <AnimatePresence>
+        {reactions.map(r => (
+          <motion.div key={r.id}
+            initial={{ opacity:1, y:0, scale:0.5 }}
+            animate={{ opacity:0, y:-140, scale:1 }}
+            exit={{ opacity:0 }}
+            transition={{ duration:2.5, ease:'easeOut' }}
+            style={{
+              position:'fixed', bottom:180, left:`${r.x}%`,
+              transform:'translateX(-50%)',
+              zIndex:900, pointerEvents:'none',
+              display:'flex', flexDirection:'column', alignItems:'center', gap:4,
+            }}>
+            <div style={{ fontSize:36 }}>{r.emoji}</div>
+            <div style={{
+              background:'rgba(0,0,0,0.6)', borderRadius:20,
+              padding:'2px 8px', fontSize:10, fontWeight:700,
+              color:'#fff', whiteSpace:'nowrap',
+            }}>{r.playerName}</div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* ── OPPONENTS ── */}
       <div style={{
