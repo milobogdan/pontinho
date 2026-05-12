@@ -380,7 +380,7 @@ io.on('connection', (socket) => {
   // ── GET ROOMS ──────────────────────────────────────────────────
   socket.on('getRooms', (callback) => {
     const publicRooms = Object.values(rooms)
-      .filter(r => !r.isPrivate && r.game?.status !== 'playing' && r.players.length < (r.maxPlayers || 8))
+      .filter(r => !r.isPrivate && r.game === null && r.players.length < (r.maxPlayers || 8))
       .map(r => ({
         code: r.code,
         gameName: r.gameName || `${r.players[0]?.name}'s Game`,
@@ -719,6 +719,19 @@ io.on('connection', (socket) => {
   
 
 }); // ← closes io.on('connection', socket => {
+
+// Periodic cleanup: delete rooms where every human socket is gone
+setInterval(() => {
+  for (const [code, room] of Object.entries(rooms)) {
+    const connectedHumans = room.players.filter(
+      p => !p.isBot && p.socketId && io.sockets.sockets.get(p.socketId)
+    );
+    if (connectedHumans.length === 0) {
+      delete rooms[code];
+      console.log(`Room ${code} auto-cleaned (no connected humans)`);
+    }
+  }
+}, 2 * 60 * 1000); // every 2 minutes
 
 const PORT = process.env.PORT || 3001;
 httpServer.listen(PORT, () => {
