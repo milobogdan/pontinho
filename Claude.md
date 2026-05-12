@@ -351,7 +351,9 @@ canReplaceJoker(meld, card) // can this card replace a Joker in this meld
 - Easy: random play, 40% meld chance, 15% STOP
 - Medium/Hard: smart draw, always extend melds, always steal Jokers
 - Bot thinking delay in processBotTurn: easy=2500ms, medium=2000ms, hard=1500ms
-- Bot names from pool: Ana, Leo, Bia, Kai, Gio, Mia, Tom, Zoe, Max, Lia, Ben, Ava, Ryu, Ivy, Sam, Noa, Lou, Eva, Rex, Sky, Rio, Ada, Jay, Lua
+- Bot names are gender-matched to avatar: male avatars (sporty/nerdy/cool/grandpa/kid) get male names, female avatars (curly/ponytail/grandma/business/pigtails) get female names
+- Male names (≤6 chars, Brazilian/international): Marco, Thiago, Diego, Lucas, Pedro, Bruno, Caio, Leo, Luca, Nico, Tomas, Andre, Vitor, Davi, Igor, Mateo, Dante, Beto, Felipe, Carlos, Murilo, Sergio, Marcos, Rafael, Max, Rafa, Joao, Kaio
+- Female names (≤6 chars): Bia, Sara, Ana, Mia, Julia, Maria, Luiza, Camila, Clara, Laura, Sofia, Livia, Alice, Bruna, Carol, Paula, Lara, Nina, Vera, Rosa, Yasmin, Renata, Flavia, Marcia, Gabi, Nadia
 - Bot name colors: easy=green (#4caf50), medium=amber (#f4a522), hard=red (#e63946)
 
 ---
@@ -427,33 +429,34 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 ### 🔴 Important Fixes
 - First turn redesign (remove keep/discard buttons, float card visually between piles)
 - **Avatar bug**: guests joining a room show sporty.png for everyone until they press Ready — avatarId not sent correctly on join, only on ready
-- **Mute on mobile mutes all sounds**: the mute button should only mute background music, not sound effects (card, discard, meld, turn, piou etc.)
-- **Empty lobby persistence**: if host closes the browser without leaving properly, the lobby stays alive forever with no real players — server should auto-destroy rooms with no human players
 
 ### 🟡 UX Improvements
-- **Opponent panel on mobile**: too large, takes too much screen space — needs to be more compact (smaller avatars, tighter layout)
-- **Round-end scoreboard**: show points gained this round next to each player's total (e.g. "+12")
-- **Longer bot names**: match male names to male avatars and female names to female avatars (coordinated with avatar gender list)
 - Card picking phase: show card values during reveal more dramatically
 
 ### 🟢 Features
-- **Bot AI overhaul** (high priority): bots need to play closer to real players
-  - Don't play melds when score is near 200 (e.g. ≥195 pts) — putting cards on the table only helps opponents; better to hold and win outright or at least not gift points
-  - Hard bot had 1 card left (a Joker) and didn't add it to a run to go out — must always check for winning moves before ending turn
-  - Easy/medium/hard should have meaningfully different strategies, not just timing delays
-  - Build toward runs and sets rather than playing random cards
-  - STOP decision logic needs to evaluate whether winning is actually achievable
 - Rules rewrite with visual examples
 - Save game vs bots (localStorage)
-- Score notebook (round-by-round history)
 - Analytics dashboard (who played, scores, game history)
 - Spectator mode (join active games, see all hands)
 - Custom favicon
 
 ### 🔵 Nice to Have
-- Extended chat/emoji reactions
 - PWA (install on home screen)
 - Steam/App Store (long term)
+
+### ✅ Done
+- Mute button only mutes background music, not sound effects
+- Empty lobby persistence: server auto-destroys rooms with no human players; lobby hidden from list as soon as game starts
+- Opponent panel on mobile: compact layout with tiny cards
+- Round-end scoreboard: shows +X pts per player
+- Bot AI overhaul: threat level, score guard, Joker urgency, win-check-first
+- Emoji reactions during game with text labels, positioned near the sender
+- Round-end auto-advance: 5s countdown on Next Round button
+- Multi-meld winning move fix: Joker at start/end allowed when rest of hand can go out
+- Card fly animations: draw/discard/meld all fly to/from the correct player's panel
+- Bot names gender-matched to avatar (Brazilian/international, ≤6 chars)
+- Decorative emojis removed from lobby/create/join/pick-a-card screens
+- Last card drag fix: draggedId backed by ref to avoid stale closure
 
 ---
 
