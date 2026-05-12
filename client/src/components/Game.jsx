@@ -59,6 +59,8 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   const prevGameStateRef = useRef(null);
   const drawPileRef = useRef(null);
   const discardPileRef = useRef(null);
+  const meldAreaRef = useRef(null);
+  const prevMeldsRef = useRef([]);
   const [flyAnim, setFlyAnim] = useState(null); // { fromX, fromY, toX, toY, hidden }
   const [disconnectInfo, setDisconnectInfo] = useState(null);
   const [disconnectCountdown, setDisconnectCountdown] = useState(30);
@@ -169,6 +171,52 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       setTimeout(() => setFlyAnim(null), 400);
     }
   }, [gameState]);
+
+  // Fly animation for meld plays and extensions
+  useEffect(() => {
+    if (!gameState?.melds || gameState.status !== 'playing') {
+      prevMeldsRef.current = gameState?.melds ?? [];
+      return;
+    }
+    const prevMelds = prevMeldsRef.current;
+    prevMeldsRef.current = gameState.melds;
+
+    function getMeldTarget(meldId) {
+      const el = meldId ? document.querySelector(`[data-meld-id="${meldId}"]`) : meldAreaRef.current;
+      if (el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+      if (meldAreaRef.current) { const r = meldAreaRef.current.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+      return { x: window.innerWidth / 2, y: 120 };
+    }
+    function getPlayerCenter(playerId) {
+      const el = document.querySelector(`[data-player-id="${playerId}"]`);
+      if (el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+      return { x: window.innerWidth / 2, y: window.innerHeight * 0.15 };
+    }
+
+    // New meld played
+    const prevIds = new Set(prevMelds.map(m => m.id));
+    const newMeld = gameState.melds.find(m => !prevIds.has(m.id));
+    if (newMeld) {
+      const from = getPlayerCenter(newMeld.ownerId);
+      const to = getMeldTarget(null);
+      setFlyAnim({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, hidden: true });
+      setTimeout(() => setFlyAnim(null), 450);
+      return;
+    }
+
+    // Meld extended
+    const extended = gameState.melds.find(m => {
+      const prev = prevMelds.find(pm => pm.id === m.id);
+      return prev && m.cards.length > prev.cards.length;
+    });
+    if (extended) {
+      const extenderId = gameState.players[gameState.currentPlayerIndex]?.id;
+      const from = getPlayerCenter(extenderId);
+      const to = getMeldTarget(extended.id);
+      setFlyAnim({ fromX: from.x, fromY: from.y, toX: to.x, toY: to.y, hidden: true });
+      setTimeout(() => setFlyAnim(null), 450);
+    }
+  }, [gameState?.melds]);
 
   // Clear the featured highlight the moment we leave firstKeepOrDiscard
   useEffect(() => {
@@ -1152,13 +1200,13 @@ function sortMeldCards(cards, type) {
 
         {/* Melds — horizontal scroll */}
         {gameState.melds.length > 0 && (
-          <div style={{
+          <div ref={meldAreaRef} style={{
             display:'flex', flexWrap:'wrap', gap:8, padding:'10px 16px',
             flexShrink:0,
             borderBottom:'1px solid rgba(255,255,255,0.06)',
           }}>
             {gameState.melds.map(meld => (
-              <div key={meld.id} style={{
+              <div key={meld.id} data-meld-id={meld.id} style={{
                 background:'rgba(0,0,0,0.22)', borderRadius:10,
                 padding:'8px 10px', flexShrink:0,
                 border:'1px solid rgba(255,255,255,0.08)',
