@@ -545,6 +545,17 @@ function handleLeave() {
     });
   }
 
+function sortHandForReveal(cards) {
+  const suitOrder = { spades: 0, hearts: 1, diamonds: 2, clubs: 3 };
+  return [...cards].sort((a, b) => {
+    if (a.isJoker && b.isJoker) return 0;
+    if (a.isJoker) return 1;
+    if (b.isJoker) return -1;
+    const s = (suitOrder[a.suit] ?? 4) - (suitOrder[b.suit] ?? 4);
+    return s !== 0 ? s : a.value - b.value;
+  });
+}
+
 function sortMeldCards(cards, type) {
     if (type === 'set') {
       const suitOrder = { spades: 0, hearts: 1, diamonds: 2, clubs: 3 };
@@ -791,7 +802,7 @@ function sortMeldCards(cards, type) {
                 <Avatar id={p.avatarId || 'sporty'} size={26} />
                 <span style={{ fontSize:12, fontWeight:700, opacity:0.7, minWidth:50 }}>{p.name}</span>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
-                  {revealedHands[p.id].map(c => <Card key={c.id} card={c} small />)}
+                  {sortHandForReveal(revealedHands[p.id]).map(c => <Card key={c.id} card={c} small />)}
                 </div>
               </div>
             ))}
