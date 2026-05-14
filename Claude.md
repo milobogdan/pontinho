@@ -79,10 +79,10 @@ card-game/
 - No Jack alongside Joker at end rule was REMOVED
 
 ### Picking from Discard
-- Must be able to use it in a run (normal play)
-- Exception: can pick if it completes a WINNING set (all remaining cards form valid melds)
+- Must be able to use it in a run OR extend an existing meld (set or run) on the table
+- Exception: can pick if it completes a WINNING hand (all remaining cards form valid melds)
 - Exception: can pick if picking + hand forms a winning run (isValidWinningRun)
-- Must actually use the picked card (in a run, or winning set/run)
+- Must actually use the picked card that turn (in a new run, or extending any existing meld)
 
 ### Joker Rules
 - Can NEVER be discarded
@@ -200,6 +200,9 @@ card-game/
 - Imports `T` and `RULES_CONTENT` from `translations.js`
 - Passes `lang` prop to both `<Lobby>` and `<Game>`
 - Splash screen: full-screen image with blurred background, language toggle, PLAY + Rules buttons
+- **Rejoin banner** (top-left, `top:64`): shown when `pontinho_rejoin` exists in localStorage
+- **Saved game banner** (top-left, `top:64`, green): shown when `pontinho_saved_game` exists; only shown if no rejoin pending
+- `onSaveAndLeave` prop on `<Game>`: saves state to `pontinho_saved_game` and returns to splash
 
 ### translations.js
 - Central store for ALL UI strings in EN, RO, PT
@@ -277,10 +280,13 @@ const isDebug = new URLSearchParams(window.location.search).get('debug') === 'tr
 
 ### GameMenu.jsx
 - Accepts `lang` prop, derives `const t = T[lang]` and `const rules = RULES_CONTENT[lang]`
+- Accepts `onSaveAndLeave` prop from Game.jsx
 - Slides in from LEFT side
 - Panels: null (menu) | 'rules' | 'scores' | 'leave'
 - Rules content comes from RULES_CONTENT[lang] (localized)
 - Scores sorted by totalScore ascending
+- Leave panel: shows **"Save & Leave"** (green) button when `isBotOnlyGame` is true; hides "replaced by bot" text in that case
+- `isBotOnlyGame`: `gameState.players.every(p => p.id === roomInfo.playerId || p.isBot)`
 
 ---
 
@@ -324,7 +330,12 @@ When `status === 'roundEnd'` or `'gameOver'`:
 1. `showRoundEnd` starts as `false` — game table stays visible with winner overlay on top
 2. Winner overlay: dark semi-transparent backdrop, bouncing avatar, gold banner with `t.winsShort(name)`
 3. After 2.2s: `showRoundEnd = true` → scoreboard screen renders
-4. Scoreboard: Next Round button (round end only) + Back to Home button (game over only)
+4. Scoreboard screen has a **tab toggle** (Score / Their cards) — defaults to Score each round
+5. Score tab: sorted scoreboard with +delta per player
+6. Their cards tab: revealed hands sorted by suit+rank, overlapping fan per player (only shown if `revealedHands` has data)
+7. Next Round button auto-advances after **10s** countdown (round end only); Back to Home on game over
+8. `revealedHands` state captures opponent hands when server sends roundEnd state with visible cards; cleared on new round
+9. `roundEndTab` state resets to `'score'` each new round
 
 ---
 
@@ -391,8 +402,9 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 ---
 
 ## Meld Display
-- Desktop: flex row with `gap:3`, medium-size cards
-- Mobile: always overlapping, step = `min(38, (180-48)/(n-1))` px per card
+- All melds use negative-margin overlap layout (no absolute positioning)
+- **flex-basis per meld**: mobile ≤7 cards = `calc(50% - 4px)`, desktop ≤4 cards = `calc(33.3% - 6px)`, 5-7 cards = `calc(50% - 4px)`, 8+ = `100%`
+- Overlap step computed from expected inner width: `step = max(16, (innerW - cardW) / (n-1))`
 - Both use Framer Motion `initial={{ opacity:0, scale:0.5, y:-20 }}` → `animate={{ opacity:1, scale:1, y:0 }}`
 
 ---
@@ -400,13 +412,14 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 ## Disconnect Handling
 **Server (index.js):**
 - Lobby disconnect: remove player, transfer host, broadcast playerList
-- In-game disconnect: mark `isDisconnected=true`, start 30s timer, broadcast `playerDisconnected`
-- After 30s: replace with easy bot in BOTH `room.players` AND `room.game.players`
+- In-game disconnect: mark `isDisconnected=true`, broadcast `playerDisconnected` with `deadline`
+- Timer: **60s** if any human opponents present, **300s** (5 min) if all opponents are bots
+- After timer: replace with easy bot in BOTH `room.players` AND `room.game.players`
 - Rejoin: `rejoinRoom` event restores socket, clears timer
 
 **Client (Game.jsx):**
 - `disconnectInfo` state stores { playerName, deadline }
-- Dark banner at top with countdown timer (localized)
+- Dark banner at top with dynamic countdown (`Math.ceil((deadline - Date.now()) / 1000)`)
 - `playerReconnected` clears the banner
 
 ---
@@ -431,17 +444,12 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 
 ### 🟢 High Impact Features
 - Round-by-round score history — expandable table in scoreboard showing per-round deltas per player
-- Post-round card reveal — briefly show other players' hands after a round ends
-- Bot STOP delay — when a bot calls STOP and wins, add ~5s pause so it feels like it's thinking
 - Host kick — host can kick unready players from the waiting room before game starts
 - Auto-sort hand button — tap to sort cards by suit+rank
 - Low card warning — pulse or subtle indicator on opponent panel when they have 1–2 cards left
 
 ### 🔵 Medium Effort
-- Card flip animation during pick phase — values currently pop in instantly; a flip would add tension
 - Visual rules with card images — replace text wall with diagrams using real card assets
-- Rejoin awareness — surface a prompt when returning to the site mid-game ("you were in a game, rejoin?")
-- Save game vs bots (localStorage)
 - Analytics dashboard (who played, scores, game history)
 - Spectator mode (join active games, see all hands)
 - Custom favicon
@@ -449,7 +457,6 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 ### 🟣 Nice to Have
 - Audio balancing: reduce background music volume, increase sound effects (card, meld, discard, win, turn)
 - More sounds: button clicks, lobby interactions, round-start fanfare
-- Emoji reactions: show longer, less transparent, fix position (currently shows too low on screen)
 - Player stats across sessions (localStorage) — win rate, average score, games played
 - PWA (install on home screen)
 - Steam/App Store (long term)
@@ -461,7 +468,7 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Round-end scoreboard: shows +X pts per player
 - Bot AI overhaul: threat level, score guard, Joker urgency, win-check-first
 - Emoji reactions during game with text labels, positioned near the sender
-- Round-end auto-advance: 5s countdown on Next Round button
+- Round-end auto-advance: 10s countdown on Next Round button
 - Multi-meld winning move fix: Joker at start/end allowed when rest of hand can go out
 - Card fly animations: draw/discard/meld all fly to/from the correct player's panel
 - Bot names gender-matched to avatar (Brazilian/international, ≤6 chars)
@@ -469,9 +476,15 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Last card drag fix: draggedId backed by ref to avoid stale closure
 - Avatar bug fixed: avatarId sent correctly on join
 - Card picking phase: more dramatic reveal with animated card values
-- Fix discard-pick set rule: picking from discard now allowed for winning sets (not just runs)
+- Fix discard-pick set rule: picking from discard allowed for winning sets AND extending any existing meld
 - Bot win detection: bots now use winning-run rules (Joker at start/end) when checking for wins
 - Bot Joker steal guard: bots only steal Jokers when they can immediately play them
+- Post-round card reveal: tab toggle between Score and Their Cards; cards sorted by suit+rank, overlapping fan
+- Dynamic meld layout: 2-per-row mobile, 3-per-row desktop for small melds; negative-margin overlap
+- Save game vs bots: getSaveState + restoreGame server events; Save & Leave in hamburger menu; Continue banner on splash
+- Dynamic disconnect timer: 60s with human opponents, 300s in bot-only games
+- Rejoin awareness: banner top-left on splash (top:64 to clear language buttons)
+- Card id=0 drag fix: `dragged === null` check instead of `!dragged` (Ace of Hearts deck 1 has id 0, which is falsy)
 
 ---
 
@@ -539,3 +552,11 @@ Add `?debug=true` to URL: `http://localhost:5173?debug=true`
 19. **Bot gender matching**: `MALE_AVATARS = new Set(['sporty','nerdy','cool','grandpa','kid'])`, female = the other 5. On addBot, avatar is picked first, then name pool is filtered by gender. Names are Brazilian/international, ≤6 chars.
 
 20. **Meld fly animations**: `meldAreaRef` on the meld container, `prevMeldsRef` tracks previous meld state. On new meld: fly from owner's panel to meld area. On extension: fly from current player's panel to `data-meld-id` element. Uses same `getOpponentCenter` pattern as draw/discard animations.
+
+21. **Card id=0 is falsy**: Deck card IDs are plain integers starting at 0. The first Ace of Hearts has `id: 0`. Always use `=== null` / `!== null` checks, never `!id` or `if (id)` — zero will fail those.
+
+22. **Save game flow**: `getSaveState` server event returns full game state (all hands visible) only for bot-only rooms. `restoreGame` creates a new room, replaces old player ID with new one, sets `socket.data.roomCode` + `socket.data.playerId`, calls `broadcastGameState` + `processBotTurn`. Client calls `getGameState` on Game mount to get initial state.
+
+23. **extendMeld discard rule**: once a card is legally picked from the discard (validated by `canUseDiscardCard` in `drawFromDiscard`), it can extend ANY existing meld (set or run) without restriction. The "run only" rule only applies to creating NEW melds via `playMeld`.
+
+24. **Round end tab state**: `roundEndTab` ('score' | 'cards') resets to 'score' whenever `gameState.status` leaves roundEnd/gameOver. The cards tab only renders if `revealedHands` has data.
