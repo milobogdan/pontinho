@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import T, { RULES_CONTENT } from '../translations';
 
-export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, onLeave, lang = 'en' }) {
+export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, onLeave, onSaveAndLeave, lang = 'en' }) {
   const t = T[lang];
   const rules = RULES_CONTENT[lang];
   const [isOpen, setIsOpen] = useState(false);
@@ -11,6 +11,8 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
   const sortedPlayers = gameState?.players
     ? [...gameState.players].sort((a, b) => a.totalScore - b.totalScore)
     : [];
+
+  const isBotOnlyGame = gameState?.players?.every(p => p.id === roomInfo?.playerId || p.isBot);
 
   function close() {
     setPanel(null);
@@ -265,17 +267,34 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                   <h3 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 22 }}>
                     {t.leaveGameQ}
                   </h3>
-                  <p style={{ opacity: 0.6, fontSize: 14, lineHeight: 1.5 }}>
-                    {t.replacedByBot}
-                  </p>
+                  {!isBotOnlyGame && (
+                    <p style={{ opacity: 0.6, fontSize: 14, lineHeight: 1.5 }}>
+                      {t.replacedByBot}
+                    </p>
+                  )}
+                  {isBotOnlyGame && onSaveAndLeave && (
+                    <button onClick={onSaveAndLeave} style={{
+                      width: '100%', padding: '14px', borderRadius: 50, border: 'none',
+                      background: 'linear-gradient(135deg, #4caf50, #2e7d32)',
+                      color: '#fff', fontFamily: "'Fredoka One',cursive",
+                      fontSize: 18, cursor: 'pointer',
+                      boxShadow: '0 4px 16px rgba(76,175,80,0.4)',
+                    }}>
+                      Save & Leave
+                    </button>
+                  )}
                   <button onClick={onLeave} style={{
                     width: '100%', padding: '14px', borderRadius: 50, border: 'none',
-                    background: 'linear-gradient(135deg, #e63946, #c0392b)',
-                    color: '#fff', fontFamily: "'Fredoka One',cursive",
+                    background: isBotOnlyGame && onSaveAndLeave
+                      ? 'rgba(230,57,70,0.15)'
+                      : 'linear-gradient(135deg, #e63946, #c0392b)',
+                    border: isBotOnlyGame && onSaveAndLeave ? '1px solid rgba(230,57,70,0.4)' : 'none',
+                    color: isBotOnlyGame && onSaveAndLeave ? '#ff8080' : '#fff',
+                    fontFamily: "'Fredoka One',cursive",
                     fontSize: 18, cursor: 'pointer',
-                    boxShadow: '0 4px 16px rgba(230,57,70,0.4)',
+                    boxShadow: isBotOnlyGame && onSaveAndLeave ? 'none' : '0 4px 16px rgba(230,57,70,0.4)',
                   }}>
-                    {t.yesLeave}
+                    {isBotOnlyGame && onSaveAndLeave ? 'Leave without saving' : t.yesLeave}
                   </button>
                   <button onClick={() => setPanel(null)} style={{
                     width: '100%', padding: '12px', borderRadius: 50,

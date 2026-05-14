@@ -18,6 +18,7 @@ export default function App() {
   const [lang, setLang]         = useState('en');
   const [showRules, setShowRules] = useState(false);
   const [pendingRejoin, setPendingRejoin] = useState(null);
+  const [savedGame, setSavedGame] = useState(null);
 
   const t = T[lang];
   const rules = RULES_CONTENT[lang];
@@ -27,6 +28,10 @@ export default function App() {
     try {
       const stored = JSON.parse(localStorage.getItem('pontinho_rejoin'));
       if (stored?.code && stored?.playerId) setPendingRejoin(stored);
+    } catch {}
+    try {
+      const sg = JSON.parse(localStorage.getItem('pontinho_saved_game'));
+      if (sg?.players && sg?.myPlayerId) setSavedGame(sg);
     } catch {}
   }, []);
 
@@ -53,6 +58,30 @@ export default function App() {
   function dismissRejoin() {
     localStorage.removeItem('pontinho_rejoin');
     setPendingRejoin(null);
+  }
+
+  function handleContinueSaved() {
+    if (!savedGame) return;
+    socket.emit('restoreGame', {
+      savedState: savedGame,
+      playerName: savedGame.playerName,
+      avatarId: savedGame.avatarId,
+    }, (res) => {
+      if (res?.error) {
+        localStorage.removeItem('pontinho_saved_game');
+        setSavedGame(null);
+      } else {
+        localStorage.removeItem('pontinho_saved_game');
+        setSavedGame(null);
+        setRoomInfo({ code: res.code, playerId: res.playerId });
+        setScreen('game');
+      }
+    });
+  }
+
+  function dismissSaved() {
+    localStorage.removeItem('pontinho_saved_game');
+    setSavedGame(null);
   }
 
   // ── SPLASH ────────────────────────────────────────────────────
@@ -103,7 +132,7 @@ export default function App() {
             animate={{ opacity:1, y:0 }}
             exit={{ opacity:0, y:-20 }}
             style={{
-              position:'absolute', top:16, left:16,
+              position:'absolute', top:64, left:16,
               zIndex:10, background:'rgba(244,165,34,0.15)',
               border:'1px solid rgba(244,165,34,0.5)',
               backdropFilter:'blur(12px)',
@@ -120,6 +149,39 @@ export default function App() {
               color:'#1a1a1a', cursor:'pointer',
             }}>Rejoin</button>
             <button onClick={dismissRejoin} style={{
+              background:'rgba(255,255,255,0.1)', border:'none', borderRadius:20,
+              padding:'5px 10px', fontWeight:700, fontSize:12,
+              color:'rgba(255,255,255,0.6)', cursor:'pointer',
+            }}>✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Saved game banner */}
+      <AnimatePresence>
+        {savedGame && !pendingRejoin && (
+          <motion.div
+            initial={{ opacity:0, y:-20 }}
+            animate={{ opacity:1, y:0 }}
+            exit={{ opacity:0, y:-20 }}
+            style={{
+              position:'absolute', top:64, left:16,
+              zIndex:10, background:'rgba(76,175,80,0.15)',
+              border:'1px solid rgba(76,175,80,0.5)',
+              backdropFilter:'blur(12px)',
+              borderRadius:16, padding:'10px 16px',
+              display:'flex', alignItems:'center', gap:10,
+              whiteSpace:'nowrap',
+            }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#80ff80' }}>
+              Saved game vs bots!
+            </span>
+            <button onClick={handleContinueSaved} style={{
+              background:'#4caf50', border:'none', borderRadius:20,
+              padding:'5px 14px', fontWeight:800, fontSize:12,
+              color:'#fff', cursor:'pointer',
+            }}>Continue</button>
+            <button onClick={dismissSaved} style={{
               background:'rgba(255,255,255,0.1)', border:'none', borderRadius:20,
               padding:'5px 10px', fontWeight:700, fontSize:12,
               color:'rgba(255,255,255,0.6)', cursor:'pointer',
@@ -286,7 +348,7 @@ export default function App() {
   return (
     <div className="app">
       {screen === 'lobby' && <Lobby onGameStart={onGameStart} lang={lang} />}
-      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => { localStorage.removeItem('pontinho_rejoin'); setScreen('splash'); }} lang={lang} />}
+      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => { localStorage.removeItem('pontinho_rejoin'); setScreen('splash'); }} onSaveAndLeave={(state) => { localStorage.setItem('pontinho_saved_game', JSON.stringify(state)); localStorage.removeItem('pontinho_rejoin'); setScreen('splash'); setSavedGame(state); }} lang={lang} />}
     </div>
   );
 }

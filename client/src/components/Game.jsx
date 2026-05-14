@@ -40,7 +40,7 @@ function playSound(type) {
   audio.play().catch(() => {});
 }
 
-export default function Game({ roomInfo, onLeave, lang = 'en' }) {
+export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' }) {
   const t = T[lang];
   const [gameState, setGameState] = useState(null);
   const [selectedCards, setSelectedCards] = useState([]);   // card IDs selected in hand
@@ -525,7 +525,24 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
 
 function handleLeave() {
     socket.emit('leaveRoom', {}, () => {});
-    window.location.reload();
+    onLeave();
+  }
+
+  function handleSaveAndLeave() {
+    socket.emit('getSaveState', { code: roomInfo.code }, (res) => {
+      socket.emit('leaveRoom', {}, () => {});
+      if (res?.state && onSaveAndLeave) {
+        const me = res.state.players.find(p => p.id === roomInfo.playerId);
+        onSaveAndLeave({
+          ...res.state,
+          myPlayerId: roomInfo.playerId,
+          playerName: me?.name,
+          avatarId: me?.avatarId,
+        });
+      } else {
+        onLeave();
+      }
+    });
   }
 
 function sortMeldCards(cards, type) {
@@ -1016,6 +1033,7 @@ function sortMeldCards(cards, type) {
           isMuted={isMuted}
           onToggleMute={() => setIsMuted(prev => !prev)}
           onLeave={handleLeave}
+          onSaveAndLeave={handleSaveAndLeave}
           lang={lang}
         />
 

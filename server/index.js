@@ -686,13 +686,16 @@ io.on('connection', (socket) => {
     player.isDisconnected = true;
     player.socketId = null;
 
-    io.to(code).emit('playerDisconnected', { 
-      playerId: player.id, 
+    // 1 min if any human opponents are present, 5 min if all bots
+    const hasHumanOpponents = room.players.some(p => !p.isBot && p.id !== player.id && p.socketId);
+    const timeoutMs = hasHumanOpponents ? 60000 : 300000;
+
+    io.to(code).emit('playerDisconnected', {
+      playerId: player.id,
       playerName: player.name,
-      deadline: Date.now() + 30000, 
+      deadline: Date.now() + timeoutMs,
     });
 
-    // Give 30 seconds to reconnect
     player.disconnectTimer = setTimeout(() => {
       if (!player.isDisconnected) return; // They reconnected!
       if (!room.game || room.game.status !== 'playing') return;
@@ -720,10 +723,75 @@ io.on('connection', (socket) => {
 
       broadcastGameState(room);
       processBotTurn(room);
-    }, 30000);
+    }, timeoutMs);
   });
 
-  
+  // ── SAVE GAME (bots-only rooms) ───────────────────────────────────────────
+  socket.on('getSaveState', (data, callback) => {
+    const { code } = data || {};
+    const room = rooms[code];
+    if (!room || !room.game) return callback({ error: 'Room not found' });
+    const allBotOpponents = room.players.every(p => p.isBot || p.socketId === socket.id);
+    if (!allBotOpponents) return callback({ error: 'Not a bot-only game' });
+    // Return full game state with all hands visible
+    const fullState = {
+      ...room.game,
+      players: room.game.players.map(p => ({ ...p })),
+    };
+    callback({ state: fullState });
+  });
+
+  socket.on('restoreGame', ({ savedState, playerName, avatarId }, callback) => {
+    if (!savedState) return callback({ error: 'No saved state' });
+    const code = getRoomCode();
+    const newPlayerId = `p-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+
+    const oldPlayerId = savedState.myPlayerId;
+
+    // Room-level players (include socketId for routing)
+    const restoredPlayers = savedState.players.map(p => {
+      if (p.id === oldPlayerId) {
+        return { ...p, id: newPlayerId, name: playerName || p.name, avatarId: avatarId || p.avatarId,
+                 socketId: socket.id, isDisconnected: false };
+      }
+      return { ...p, socketId: null };
+    });
+
+    // Build clean game state — strip client-added metadata keys, reset stop state
+    const { myPlayerId, playerName: _pn, avatarId: _av, ...cleanSaved } = savedState;
+    const gameState = {
+      ...cleanSaved,
+      status: 'playing',
+      stopCalledBy: null,
+      stopSnapshot: null,
+      stopDeadline: null,
+      stopOriginalPlayerIndex: null,
+      stopOriginalPhase: null,
+      // Replace old player ID in players array
+      players: restoredPlayers.map(({ socketId, ...gp }) => {
+        if (gp.id === newPlayerId) return { ...gp, stopBanned: false, discardBanned: false };
+        return gp;
+      }),
+      // Replace old ID in stopCalledBy / lastDiscardedBy fields (both reset above)
+      lastDiscardedBy: savedState.lastDiscardedBy === oldPlayerId ? newPlayerId : savedState.lastDiscardedBy,
+    };
+
+    const room = {
+      code,
+      players: restoredPlayers,
+      game: gameState,
+      debugMode: false,
+      stopTimer: null,
+    };
+    rooms[code] = room;
+    socket.join(code);
+    socket.data.roomCode = code;
+    socket.data.playerId = newPlayerId;
+
+    broadcastGameState(room);
+    processBotTurn(room);
+    callback({ code, playerId: newPlayerId });
+  });
 
 }); // ← closes io.on('connection', socket => {
 
