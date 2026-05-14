@@ -271,16 +271,17 @@ export function extendMeld(game, playerId, meldId, cardIds) {
   const cards = cardIds.map(id => player.hand.find(c => c.id === id)).filter(Boolean);
   if (cards.length !== cardIds.length) return { error: 'Some cards not found in your hand' };
 
+  // Check if this would empty the hand (winning move) — allow joker at end
+  const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
+  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
+
   if (game.pickedFromDiscard) {
     const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
-    if (usesDiscardCard && meld.type === 'set') {
+    if (usesDiscardCard && meld.type === 'set' && !isWinningMove) {
       return { error: 'Card picked from discard pile can only be used in a run' };
     }
   }
 
-  // Check if this would empty the hand (winning move) — allow joker at end
-  const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
   const combined = [...meld.cards, ...cards];
   const valid = (isWinningMove || game.stopCalledBy)
     ? (isValidExtension(meld.cards, cards) || isValidWinningRun(combined))
