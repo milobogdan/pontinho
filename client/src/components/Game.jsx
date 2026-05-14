@@ -259,13 +259,13 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
       if (el) {
         const rect = el.getBoundingClientRect();
         cx = rect.left + rect.width / 2;
-        cy = rect.bottom;
+        cy = rect.top + rect.height / 2;
       } else {
         cx = window.innerWidth / 2;
-        cy = window.innerHeight - 220;
+        cy = window.innerHeight / 2;
       }
       setReactions(prev => [...prev, { id, playerId, playerName, emoji, text, cx, cy }]);
-      setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 2800);
+      setTimeout(() => setReactions(prev => prev.filter(r => r.id !== id)), 4500);
     });
 
     socket.emit('getGameState', (res) => {
@@ -656,7 +656,14 @@ function sortMeldCards(cards, type) {
                         : isMyPick ? 'drop-shadow(0 0 10px rgba(244,165,34,0.8))' : 'none',
                     }}
                     onClick={() => canPick && socket.emit('pickCard', { cardId: card.id }, () => {})}>
-                    <Card card={isTaken ? card : { hidden: true }} />
+                    <motion.div
+                      key={`flip-${isTaken}-${revealed}`}
+                      initial={{ rotateY: isTaken ? -90 : 0 }}
+                      animate={{ rotateY: 0 }}
+                      transition={{ duration: 0.35, delay: revealed && isTaken ? idx * 0.09 : 0 }}
+                      style={{ display:'inline-block', transformStyle:'preserve-3d' }}>
+                      <Card card={isTaken ? card : { hidden: true }} />
+                    </motion.div>
                     {pickedBy && (
                       <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }}
                         style={{ marginTop: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
@@ -734,6 +741,32 @@ function sortMeldCards(cards, type) {
           </h1>
           {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>{t.wins(winner.name)}</p>}
         </motion.div>
+
+        {/* Card reveal — what each player had left */}
+        {gameState.players.some(p => p.hand?.length > 0 && p.id !== gameState.winner) && (
+          <motion.div
+            initial={{ opacity:0, y:20 }}
+            animate={{ opacity:1, y:0 }}
+            transition={{ delay:0.1, duration:0.4 }}
+            style={{ background:'rgba(0,0,0,0.3)', borderRadius:16, padding:'16px 20px',
+              width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.08)' }}>
+            <h4 style={{ fontFamily:"'Fredoka One',cursive", fontSize:17, marginBottom:12,
+              opacity:0.8, textAlign:'center' }}>
+              What they had
+            </h4>
+            {gameState.players
+              .filter(p => p.hand?.length > 0)
+              .map(p => (
+              <div key={p.id} style={{ marginBottom:10, display:'flex', alignItems:'center', gap:10 }}>
+                <Avatar id={p.avatarId || 'sporty'} size={26} />
+                <span style={{ fontSize:12, fontWeight:700, opacity:0.7, minWidth:50 }}>{p.name}</span>
+                <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
+                  {(p.hand || []).map(c => <Card key={c.id} card={c} size="small" />)}
+                </div>
+              </div>
+            ))}
+          </motion.div>
+        )}
 
         <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
           width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.1)' }}>
@@ -1046,9 +1079,9 @@ function sortMeldCards(cards, type) {
         {reactions.map(r => (
           <motion.div key={r.id}
             initial={{ opacity:1, y:0, scale:0.5 }}
-            animate={{ opacity:0, y:-120, scale:1 }}
+            animate={{ opacity:0, y:-140, scale:1 }}
             exit={{ opacity:0 }}
-            transition={{ duration:2.5, ease:'easeOut' }}
+            transition={{ duration:4, ease:'easeOut' }}
             style={{
               position:'fixed', left: r.cx, top: r.cy,
               transform:'translateX(-50%)',
@@ -1056,7 +1089,7 @@ function sortMeldCards(cards, type) {
               display:'flex', flexDirection:'column', alignItems:'center', gap:3,
             }}>
             <div style={{
-              background:'rgba(15,40,25,0.92)', border:'1px solid rgba(255,255,255,0.15)',
+              background:'rgba(15,40,25,0.98)', border:'1px solid rgba(255,255,255,0.25)',
               borderRadius:20, padding:'5px 10px',
               display:'flex', alignItems:'center', gap:6,
               boxShadow:'0 4px 16px rgba(0,0,0,0.4)',

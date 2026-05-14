@@ -141,6 +141,13 @@ async function checkBotStop(room) {
       room.game.stopCalledBy = gamePlayer.id;
       broadcastGameState(room);
 
+      // Pause so it feels like the bot is thinking through its winning hand
+      await delay(5000);
+
+      // Verify state is still valid after the delay
+      if (room.game.status !== 'playing') return;
+      if (room.game.stopCalledBy !== gamePlayer.id) return;
+
       const meldIds = result.melds.map(meld => meld.map(c => c.id));
       const finalDiscardId = result.discard?.id || null;
 

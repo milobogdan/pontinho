@@ -235,7 +235,7 @@ async function executeWin(game, botId, winResult, broadcast) {
     const discCard = winResult.discard
       ? botRef().hand.find(c => c.id === winResult.discard.id)
       : null;
-    const toDiscard = discCard || botRef().hand.find(c => !c.isJoker);
+    const toDiscard = discCard || botRef().hand.find(c => !c.isJoker) || botRef().hand[0];
     if (toDiscard) {
       discardCard(game, botId, toDiscard.id);
       broadcast();
@@ -293,7 +293,7 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
           if (game.status !== 'playing') return;
           // Check for a full win first (discard card may complete a winning set)
           const winResultAfterDraw = findWinningMelds(bot().hand);
-          if (winResultAfterDraw && (!winResultAfterDraw.discard || !winResultAfterDraw.discard.isJoker)) {
+          if (winResultAfterDraw) {
             await executeWin(game, botId, winResultAfterDraw, broadcast);
             if (game.status !== 'playing') return;
           } else {
@@ -337,7 +337,7 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
     const winCheckChance = difficulty === 'hard' ? 1.0 : difficulty === 'medium' ? 0.8 : 0.2;
     if (Math.random() < winCheckChance) {
       const winResult = findWinningMelds(hand());
-      if (winResult && (!winResult.discard || !winResult.discard.isJoker)) {
+      if (winResult) {
         await executeWin(game, botId, winResult, broadcast);
         if (game.status !== 'playing' || hand().length === 0) return;
       }

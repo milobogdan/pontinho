@@ -34,6 +34,17 @@ const SCENARIOS = [
     phase: 'draw',
   },
   {
+    name: '🃏 Pick discard → winning set',
+    desc: 'Hand: 10♣ 10♦ J♦ — pick 10♠ from discard, play 10s as set, discard J♦',
+    hand: [
+      { id:'d1', suit:'clubs',    rank:'10', value:10 },
+      { id:'d2', suit:'diamonds', rank:'10', value:10 },
+      { id:'d3', suit:'diamonds', rank:'J',  value:11 },
+    ],
+    discard: { id:'d4', suit:'spades', rank:'10', value:10 },
+    phase: 'draw',
+  },
+  {
     name: '🏃 Joker at end of run',
     desc: 'Q K A + Joker should extend',
     hand: [{ id:'d1', isJoker:true, rank:'JOKER', value:50 }],

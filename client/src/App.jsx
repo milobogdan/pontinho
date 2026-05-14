@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Lobby from './components/Lobby';
 import Game from './components/Game';
 import T, { RULES_CONTENT } from './translations';
+import socket from './socket';
 import './App.css';
 
 const LANGUAGES = {
@@ -16,13 +17,42 @@ export default function App() {
   const [roomInfo, setRoomInfo] = useState(null);
   const [lang, setLang]         = useState('en');
   const [showRules, setShowRules] = useState(false);
+  const [pendingRejoin, setPendingRejoin] = useState(null);
 
   const t = T[lang];
   const rules = RULES_CONTENT[lang];
 
+  // Check for stored session on mount
+  useEffect(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('pontinho_rejoin'));
+      if (stored?.code && stored?.playerId) setPendingRejoin(stored);
+    } catch {}
+  }, []);
+
   function onGameStart(info) {
     setRoomInfo(info);
     setScreen('game');
+    localStorage.setItem('pontinho_rejoin', JSON.stringify({ code: info.code, playerId: info.playerId }));
+  }
+
+  function handleRejoin() {
+    if (!pendingRejoin) return;
+    socket.emit('rejoinRoom', { roomCode: pendingRejoin.code, playerId: pendingRejoin.playerId }, (res) => {
+      if (res?.error) {
+        localStorage.removeItem('pontinho_rejoin');
+        setPendingRejoin(null);
+      } else {
+        setRoomInfo({ code: pendingRejoin.code, playerId: pendingRejoin.playerId });
+        setScreen('game');
+        setPendingRejoin(null);
+      }
+    });
+  }
+
+  function dismissRejoin() {
+    localStorage.removeItem('pontinho_rejoin');
+    setPendingRejoin(null);
   }
 
   // ── SPLASH ────────────────────────────────────────────────────
@@ -64,6 +94,39 @@ export default function App() {
         height:'55%', zIndex:2,
         background:'linear-gradient(to top, rgba(10,30,15,0.98) 0%, rgba(10,30,15,0.7) 50%, transparent 100%)',
       }} />
+
+      {/* Rejoin banner */}
+      <AnimatePresence>
+        {pendingRejoin && (
+          <motion.div
+            initial={{ opacity:0, y:-20 }}
+            animate={{ opacity:1, y:0 }}
+            exit={{ opacity:0, y:-20 }}
+            style={{
+              position:'absolute', top:16, left:'50%', transform:'translateX(-50%)',
+              zIndex:10, background:'rgba(244,165,34,0.15)',
+              border:'1px solid rgba(244,165,34,0.5)',
+              backdropFilter:'blur(12px)',
+              borderRadius:16, padding:'10px 16px',
+              display:'flex', alignItems:'center', gap:10,
+              whiteSpace:'nowrap',
+            }}>
+            <span style={{ fontSize:13, fontWeight:700, color:'#f4a522' }}>
+              You were in a game!
+            </span>
+            <button onClick={handleRejoin} style={{
+              background:'#f4a522', border:'none', borderRadius:20,
+              padding:'5px 14px', fontWeight:800, fontSize:12,
+              color:'#1a1a1a', cursor:'pointer',
+            }}>Rejoin</button>
+            <button onClick={dismissRejoin} style={{
+              background:'rgba(255,255,255,0.1)', border:'none', borderRadius:20,
+              padding:'5px 10px', fontWeight:700, fontSize:12,
+              color:'rgba(255,255,255,0.6)', cursor:'pointer',
+            }}>✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Language toggle — top right */}
       <motion.div
@@ -223,7 +286,7 @@ export default function App() {
   return (
     <div className="app">
       {screen === 'lobby' && <Lobby onGameStart={onGameStart} lang={lang} />}
-      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => setScreen('splash')} lang={lang} />}
+      {screen === 'game'  && <Game roomInfo={roomInfo} onLeave={() => { localStorage.removeItem('pontinho_rejoin'); setScreen('splash'); }} lang={lang} />}
     </div>
   );
 }

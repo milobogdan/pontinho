@@ -429,14 +429,28 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 ### 🔴 Important Fixes
 - First turn redesign (remove keep/discard buttons, float card visually between piles)
 
-### 🟢 Features
-- Rules rewrite with visual examples
+### 🟢 High Impact Features
+- Round-by-round score history — expandable table in scoreboard showing per-round deltas per player
+- Post-round card reveal — briefly show other players' hands after a round ends
+- Bot STOP delay — when a bot calls STOP and wins, add ~5s pause so it feels like it's thinking
+- Host kick — host can kick unready players from the waiting room before game starts
+- Auto-sort hand button — tap to sort cards by suit+rank
+- Low card warning — pulse or subtle indicator on opponent panel when they have 1–2 cards left
+
+### 🔵 Medium Effort
+- Card flip animation during pick phase — values currently pop in instantly; a flip would add tension
+- Visual rules with card images — replace text wall with diagrams using real card assets
+- Rejoin awareness — surface a prompt when returning to the site mid-game ("you were in a game, rejoin?")
 - Save game vs bots (localStorage)
 - Analytics dashboard (who played, scores, game history)
 - Spectator mode (join active games, see all hands)
 - Custom favicon
 
-### 🔵 Nice to Have
+### 🟣 Nice to Have
+- Audio balancing: reduce background music volume, increase sound effects (card, meld, discard, win, turn)
+- More sounds: button clicks, lobby interactions, round-start fanfare
+- Emoji reactions: show longer, less transparent, fix position (currently shows too low on screen)
+- Player stats across sessions (localStorage) — win rate, average score, games played
 - PWA (install on home screen)
 - Steam/App Store (long term)
 
@@ -455,6 +469,9 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Last card drag fix: draggedId backed by ref to avoid stale closure
 - Avatar bug fixed: avatarId sent correctly on join
 - Card picking phase: more dramatic reveal with animated card values
+- Fix discard-pick set rule: picking from discard now allowed for winning sets (not just runs)
+- Bot win detection: bots now use winning-run rules (Joker at start/end) when checking for wins
+- Bot Joker steal guard: bots only steal Jokers when they can immediately play them
 
 ---
 

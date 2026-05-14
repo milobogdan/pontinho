@@ -19,7 +19,7 @@ function getCombos(arr, size) {
 
 function canGoOut(cards) {
   if (cards.length === 0) return true;
-  if (cards.length === 1) return !cards[0].isJoker; // last card gets discarded; Joker can't be discarded
+  if (cards.length === 1) return true; // last card is always discardable — Jokers too (new rule)
   const max = Math.min(cards.length, 7);
   for (let size = max; size >= 3; size--) {
     for (const combo of getCombos(cards, size)) {
@@ -404,8 +404,8 @@ export function discardCard(game, playerId, cardId) {
   const cardIndex = player.hand.findIndex(c => c.id === cardId);
   if (cardIndex === -1) return { error: 'Card not found in your hand' };
 
-  // Jokers cannot be discarded
-  if (player.hand[cardIndex].isJoker) return { error: 'You cannot discard a Joker' };
+  // Jokers can only be discarded as the very last card (wins the round)
+  if (player.hand[cardIndex].isJoker && player.hand.length > 1) return { error: 'You cannot discard a Joker' };
 
   const [card] = player.hand.splice(cardIndex, 1);
   game.discardPile.push(card);
@@ -521,6 +521,7 @@ export function nextTurn(game) {
 // ─── PLAYER VIEW (hides other hands, always hides draw pile) ─────────────────
 
 export function getPlayerView(game, playerId, debugMode = false) {
+  const revealHands = game.status === 'roundEnd' || game.status === 'gameOver';
   return {
     ...game,
     drawPile: game.drawPile.map(() => ({ hidden: true })),
@@ -529,7 +530,7 @@ export function getPlayerView(game, playerId, debugMode = false) {
     ),
     players: game.players.map(p => ({
       ...p,
-      hand: (p.id === playerId || debugMode)
+      hand: (p.id === playerId || debugMode || revealHands)
         ? p.hand
         : p.hand.map(() => ({ hidden: true })),
     })),
