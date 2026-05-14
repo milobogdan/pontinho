@@ -103,7 +103,7 @@ export default function App() {
             animate={{ opacity:1, y:0 }}
             exit={{ opacity:0, y:-20 }}
             style={{
-              position:'absolute', top:16, left:'50%', transform:'translateX(-50%)',
+              position:'absolute', top:16, left:16,
               zIndex:10, background:'rgba(244,165,34,0.15)',
               border:'1px solid rgba(244,165,34,0.5)',
               backdropFilter:'blur(12px)',
