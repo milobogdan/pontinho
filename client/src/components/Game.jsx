@@ -328,7 +328,7 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
       setNextRoundCountdown(null);
       return;
     }
-    setNextRoundCountdown(5);
+    setNextRoundCountdown(10);
     const interval = setInterval(() => {
       setNextRoundCountdown(prev => {
         if (prev <= 1) {
@@ -800,8 +800,9 @@ function sortMeldCards(cards, type) {
               .map(p => {
                 const cards = sortHandForReveal(revealedHands[p.id]);
                 const n = cards.length;
-                // fit all cards in ~440px: card width=48, overlap so total = 48 + (n-1)*step
-                const step = n > 1 ? Math.min(44, Math.floor(420 / n)) : 48;
+                // fit cards within available screen width (account for box padding ~80px)
+                const availableW = Math.min(window.innerWidth - 80, 400);
+                const step = n > 1 ? Math.min(44, Math.floor(availableW / n)) : 48;
                 const overlap = -(48 - step);
                 return (
                   <div key={p.id} style={{ marginBottom:14 }}>
