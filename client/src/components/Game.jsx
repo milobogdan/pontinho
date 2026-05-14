@@ -1286,55 +1286,73 @@ function sortMeldCards(cards, type) {
         position:'relative',
       }}>
 
-        {/* Melds — horizontal scroll */}
+        {/* Melds */}
         {gameState.melds.length > 0 && (
           <div ref={meldAreaRef} style={{
             display:'flex', flexWrap:'wrap', gap:8, padding:'10px 16px',
             flexShrink:0,
             borderBottom:'1px solid rgba(255,255,255,0.06)',
+            alignItems:'flex-start',
           }}>
-            {gameState.melds.map(meld => (
-              <div key={meld.id} data-meld-id={meld.id} style={{
-                background:'rgba(0,0,0,0.22)', borderRadius:10,
-                padding:'8px 10px', flexShrink:0,
-                border:'1px solid rgba(255,255,255,0.08)',
-              }}>
-                {(() => {
-                  const isMobile = window.innerWidth < 600;
-                  const sorted = sortMeldCards(meld.cards, meld.type);
-                  const cardW = 48, cardH = 68;
-                  const useOverlap = isMobile;
-                  const step = useOverlap && sorted.length > 1
-                    ? Math.min(38, Math.floor((180 - cardW) / (sorted.length - 1)))
-                    : null;
-                  const containerW = useOverlap ? (sorted.length === 1 ? cardW : step * (sorted.length - 1) + cardW) : null;
-                  return (
-                    <div style={useOverlap
-                      ? { position:'relative', width:containerW, height:cardH, flexShrink:0 }
-                      : { display:'flex', gap:3, alignItems:'center' }
-                    }>
-                      {sorted.map((c, i) => (
-                        <motion.div key={c.id}
-                          initial={{ opacity:0, scale:0.5, y:-20 }}
-                          animate={{ opacity:1, scale:1, y:0 }}
-                          transition={{ duration:0.3, ease:'backOut' }}
-                          style={useOverlap ? { position:'absolute', left: i * step, zIndex: i } : {}}
-                          onClick={() => {
-                            if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
-                            if (c.isJoker && selectedCards.length === 1) {
-                              emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
-                            } else {
-                              emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
-                            }
-                          }}>
-                          <Card card={c} medium />
-                        </motion.div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            ))}
+            {gameState.melds.map(meld => {
+              const sorted = sortMeldCards(meld.cards, meld.type);
+              const n = sorted.length;
+              const cardW = isMobileLayout ? 48 : 60;
+              const cardH = isMobileLayout ? 68 : 86;
+
+              // flex-basis: how many melds share a row
+              // mobile: 2-per-row always (8+ = full row)
+              // desktop: ≤4 cards = 3-per-row, 5-7 = 2-per-row, 8+ = full row
+              const flexBasis = n >= 8
+                ? '100%'
+                : (isMobileLayout || n >= 5)
+                  ? 'calc(50% - 4px)'
+                  : 'calc(33.3% - 6px)';
+
+              // Expected inner width of the meld (flex-basis minus horizontal padding)
+              const innerW = n >= 8
+                ? (isMobileLayout ? 330 : 700)
+                : (isMobileLayout || n >= 5)
+                  ? (isMobileLayout ? 150 : 340)
+                  : 220; // desktop 3-per-row
+
+              // Overlap: how many pixels each subsequent card is offset
+              const noOverlapW = n * cardW + (n - 1) * 3;
+              const needsOverlap = noOverlapW > innerW;
+              const step = needsOverlap && n > 1
+                ? Math.max(16, Math.floor((innerW - cardW) / (n - 1)))
+                : null;
+
+              return (
+                <div key={meld.id} data-meld-id={meld.id} style={{
+                  background:'rgba(0,0,0,0.22)', borderRadius:10,
+                  padding:'8px 10px',
+                  flex: `0 1 ${flexBasis}`,
+                  minWidth:0, boxSizing:'border-box',
+                  border:'1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <div style={{ display:'flex', alignItems:'center' }}>
+                    {sorted.map((c, i) => (
+                      <motion.div key={c.id}
+                        initial={{ opacity:0, scale:0.5, y:-20 }}
+                        animate={{ opacity:1, scale:1, y:0 }}
+                        transition={{ duration:0.3, ease:'backOut' }}
+                        style={{ marginLeft: i === 0 ? 0 : needsOverlap ? -(cardW - step) : 3, zIndex:i, flexShrink:0 }}
+                        onClick={() => {
+                          if (!isMyTurn || phase !== 'play' || selectedCards.length === 0) return;
+                          if (c.isJoker && selectedCards.length === 1) {
+                            emit('stealJoker', { meldId: meld.id, replacementCardId: selectedCards[0] });
+                          } else {
+                            emit('extendMeld', { meldId: meld.id, cardIds: selectedCards });
+                          }
+                        }}>
+                        <Card card={c} medium />
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
