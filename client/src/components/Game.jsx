@@ -797,19 +797,28 @@ function sortMeldCards(cards, type) {
             </h4>
             {gameState.players
               .filter(p => revealedHands[p.id]?.length > 0)
-              .map(p => (
-              <div key={p.id} style={{ marginBottom:10, display:'flex', alignItems:'center', gap:10 }}>
-                <Avatar id={p.avatarId || 'sporty'} size={26} />
-                <span style={{ fontSize:12, fontWeight:700, opacity:0.7, minWidth:50 }}>{p.name}</span>
-                <div style={{ display:'flex', flexWrap:'wrap' }}>
-                  {sortHandForReveal(revealedHands[p.id]).map((c, i) => (
-                    <div key={c.id} style={{ marginLeft: i === 0 ? 0 : -20, zIndex: i }}>
-                      <Card card={c} small />
+              .map(p => {
+                const cards = sortHandForReveal(revealedHands[p.id]);
+                const n = cards.length;
+                // fit all cards in ~440px: card width=48, overlap so total = 48 + (n-1)*step
+                const step = n > 1 ? Math.min(44, Math.floor(420 / n)) : 48;
+                const overlap = -(48 - step);
+                return (
+                  <div key={p.id} style={{ marginBottom:14 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                      <Avatar id={p.avatarId || 'sporty'} size={22} />
+                      <span style={{ fontSize:12, fontWeight:700, opacity:0.6 }}>{p.name}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-            ))}
+                    <div style={{ display:'flex', flexWrap:'nowrap' }}>
+                      {cards.map((c, i) => (
+                        <div key={c.id} style={{ marginLeft: i === 0 ? 0 : overlap, zIndex: i, flexShrink:0 }}>
+                          <Card card={c} small />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </motion.div>
         )}
 
