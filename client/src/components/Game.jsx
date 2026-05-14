@@ -68,6 +68,7 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
   const [showRoundEnd, setShowRoundEnd] = useState(false);
   const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
   const [revealedHands, setRevealedHands] = useState(null);
+  const [roundEndTab, setRoundEndTab] = useState('score');
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
   const [roundStartScores, setRoundStartScores] = useState({});
   const [reactions, setReactions] = useState([]);
@@ -320,6 +321,7 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
       setShowRoundEnd(false);
       setNextRoundCountdown(null);
       setRevealedHands(null);
+      setRoundEndTab('score');
     }
   }, [gameState?.status]);
 
@@ -783,96 +785,114 @@ function sortMeldCards(cards, type) {
           {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>{t.wins(winner.name)}</p>}
         </motion.div>
 
-        {/* Scoreboard */}
-        <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
-          width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.1)' }}>
-          <h3 style={{ fontFamily:"'Fredoka One',cursive", fontSize:22, marginBottom:16, textAlign:'center' }}>
-            {t.scoreboard}
-          </h3>
-          {[...gameState.players]
-            .sort((a, b) => a.totalScore - b.totalScore)
-            .map((p, rank) => (
-            <motion.div key={p.id}
-              initial={{ opacity:0, x:-30 }}
-              animate={{ opacity:1, x:0 }}
-              transition={{ delay: 0.3 + rank * 0.1, duration:0.3 }}
-              style={{
-              display:'flex', justifyContent:'space-between', alignItems:'center',
-              padding:'10px 14px', marginBottom:8, borderRadius:12,
-              background: rank === 0 ? 'rgba(244,165,34,0.15)' : 'rgba(255,255,255,0.05)',
-              border: rank === 0 ? '1px solid rgba(244,165,34,0.4)' : '1px solid rgba(255,255,255,0.06)',
-            }}>
-              <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                <span style={{ fontSize:20 }}>
-                  {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `${rank+1}.`}
-                </span>
-                <span style={{ fontWeight:800, fontSize:15 }}>
-                  {p.name}{p.isBot?' 🤖':''}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
-                </span>
-              </div>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                {(() => {
-                  const delta = p.totalScore - (roundStartScores[p.id] ?? p.totalScore);
-                  return delta > 0 ? (
-                    <span style={{ fontSize:13, fontWeight:700, color:'#ff8080',
-                      background:'rgba(230,57,70,0.15)', padding:'2px 7px', borderRadius:20 }}>
-                      +{delta}
-                    </span>
-                  ) : delta === 0 ? (
-                    <span style={{ fontSize:13, fontWeight:700, color:'#80ff80',
-                      background:'rgba(76,175,80,0.15)', padding:'2px 7px', borderRadius:20 }}>
-                      +0 🏆
-                    </span>
-                  ) : null;
-                })()}
-                <span style={{ fontFamily:"'Fredoka One',cursive", fontSize:22,
-                  color: rank === 0 ? '#f4a522' : '#fff' }}>
-                  {p.totalScore} pts
-                </span>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        {/* Scoreboard / Card reveal toggle */}
+        {(() => {
+          const hasReveal = revealedHands && Object.keys(revealedHands).length > 0;
+          const [tab, setTab] = [roundEndTab, setRoundEndTab];
+          return (
+            <div style={{ width:'100%', maxWidth:480 }}>
+              {/* Tab bar */}
+              {hasReveal && (
+                <div style={{ display:'flex', marginBottom:8, borderRadius:14, overflow:'hidden',
+                  background:'rgba(0,0,0,0.25)', padding:4, gap:4 }}>
+                  {['score', 'cards'].map(t2 => (
+                    <button key={t2} onClick={() => setTab(t2)} style={{
+                      flex:1, padding:'9px', border:'none', borderRadius:10, cursor:'pointer',
+                      fontFamily:"'Fredoka One',cursive", fontSize:15,
+                      background: tab === t2 ? 'rgba(244,165,34,0.25)' : 'transparent',
+                      color: tab === t2 ? '#f4a522' : 'rgba(255,255,255,0.5)',
+                      fontWeight: tab === t2 ? 800 : 600,
+                      transition:'all 0.2s',
+                    }}>
+                      {t2 === 'score' ? '🏆 Score' : '🃏 Their cards'}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-        {/* Card reveal — what each player had left */}
-        {revealedHands && Object.keys(revealedHands).length > 0 && (
-          <motion.div
-            initial={{ opacity:0, y:20 }}
-            animate={{ opacity:1, y:0 }}
-            transition={{ delay:0.1, duration:0.4 }}
-            style={{ background:'rgba(0,0,0,0.3)', borderRadius:16, padding:'16px 20px',
-              width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.08)' }}>
-            <h4 style={{ fontFamily:"'Fredoka One',cursive", fontSize:17, marginBottom:12,
-              opacity:0.8, textAlign:'center' }}>
-              What they had
-            </h4>
-            {gameState.players
-              .filter(p => revealedHands[p.id]?.length > 0)
-              .map(p => {
-                const cards = sortHandForReveal(revealedHands[p.id]);
-                const n = cards.length;
-                // fit cards within available screen width (account for box padding ~80px)
-                const availableW = Math.min(window.innerWidth - 80, 400);
-                const step = n > 1 ? Math.min(44, Math.floor(availableW / n)) : 48;
-                const overlap = -(48 - step);
-                return (
-                  <div key={p.id} style={{ marginBottom:14 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                      <Avatar id={p.avatarId || 'sporty'} size={22} />
-                      <span style={{ fontSize:12, fontWeight:700, opacity:0.6 }}>{p.name}</span>
-                    </div>
-                    <div style={{ display:'flex', flexWrap:'nowrap' }}>
-                      {cards.map((c, i) => (
-                        <div key={c.id} style={{ marginLeft: i === 0 ? 0 : overlap, zIndex: i, flexShrink:0 }}>
-                          <Card card={c} small />
+              {/* Score panel */}
+              {tab === 'score' && (
+                <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
+                  border:'1px solid rgba(255,255,255,0.1)' }}>
+                  {[...gameState.players]
+                    .sort((a, b) => a.totalScore - b.totalScore)
+                    .map((p, rank) => (
+                    <motion.div key={p.id}
+                      initial={{ opacity:0, x:-30 }}
+                      animate={{ opacity:1, x:0 }}
+                      transition={{ delay: 0.3 + rank * 0.1, duration:0.3 }}
+                      style={{
+                      display:'flex', justifyContent:'space-between', alignItems:'center',
+                      padding:'10px 14px', marginBottom:8, borderRadius:12,
+                      background: rank === 0 ? 'rgba(244,165,34,0.15)' : 'rgba(255,255,255,0.05)',
+                      border: rank === 0 ? '1px solid rgba(244,165,34,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                    }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                        <span style={{ fontSize:20 }}>
+                          {rank === 0 ? '🥇' : rank === 1 ? '🥈' : rank === 2 ? '🥉' : `${rank+1}.`}
+                        </span>
+                        <span style={{ fontWeight:800, fontSize:15 }}>
+                          {p.name}{p.isBot?' 🤖':''}{p.eliminated?' ❌':''}{p.hasExploded&&!p.eliminated?' 💥':''}
+                        </span>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        {(() => {
+                          const delta = p.totalScore - (roundStartScores[p.id] ?? p.totalScore);
+                          return delta > 0 ? (
+                            <span style={{ fontSize:13, fontWeight:700, color:'#ff8080',
+                              background:'rgba(230,57,70,0.15)', padding:'2px 7px', borderRadius:20 }}>
+                              +{delta}
+                            </span>
+                          ) : delta === 0 ? (
+                            <span style={{ fontSize:13, fontWeight:700, color:'#80ff80',
+                              background:'rgba(76,175,80,0.15)', padding:'2px 7px', borderRadius:20 }}>
+                              +0 🏆
+                            </span>
+                          ) : null;
+                        })()}
+                        <span style={{ fontFamily:"'Fredoka One',cursive", fontSize:22,
+                          color: rank === 0 ? '#f4a522' : '#fff' }}>
+                          {p.totalScore} pts
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+
+              {/* Card reveal panel */}
+              {tab === 'cards' && hasReveal && (
+                <div style={{ background:'rgba(0,0,0,0.3)', borderRadius:20, padding:'16px 20px',
+                  border:'1px solid rgba(255,255,255,0.08)' }}>
+                  {gameState.players
+                    .filter(p => revealedHands[p.id]?.length > 0)
+                    .map(p => {
+                      const cards = sortHandForReveal(revealedHands[p.id]);
+                      const n = cards.length;
+                      const availableW = Math.min(window.innerWidth - 80, 400);
+                      const step = n > 1 ? Math.min(44, Math.floor(availableW / n)) : 48;
+                      const overlap = -(48 - step);
+                      return (
+                        <div key={p.id} style={{ marginBottom:14 }}>
+                          <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                            <Avatar id={p.avatarId || 'sporty'} size={22} />
+                            <span style={{ fontSize:12, fontWeight:700, opacity:0.6 }}>{p.name}</span>
+                          </div>
+                          <div style={{ display:'flex', flexWrap:'nowrap' }}>
+                            {cards.map((c, i) => (
+                              <div key={c.id} style={{ marginLeft: i === 0 ? 0 : overlap, zIndex: i, flexShrink:0 }}>
+                                <Card card={c} small />
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-          </motion.div>
-        )}
+                      );
+                    })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <div style={{ display:'flex', gap:14, flexWrap:'wrap', justifyContent:'center' }}>
           {!isGameOver && (
