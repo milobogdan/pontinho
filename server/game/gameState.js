@@ -229,19 +229,16 @@ export function playMeld(game, playerId, cardIds) {
   const cards = cardIds.map(id => player.hand.find(c => c.id === id)).filter(Boolean);
   if (cards.length !== cardIds.length) return { error: 'Some cards not found in your hand' };
 
-  // If player picked from discard, that card must be used and only in a run
+  const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
+  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
+
+  // Discard card must be used in a run — exception: a set is allowed if it's a winning move
   if (game.pickedFromDiscard && !game.stopCalledBy) {
     const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
-    const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-    const isWinningRun = remainingAfter.length === 0 && isValidWinningRun(cards);
-    const isWinningSet = remainingAfter.length === 0 && isValidSet(cards);
-    if (usesDiscardCard && !isValidRun(cards) && !isWinningRun && !isWinningSet) {
+    if (usesDiscardCard && !isValidRun(cards) && !isValidWinningRun(cards) && !(isValidSet(cards) && isWinningMove)) {
       return { error: 'Card picked from discard pile can only be used in a run' };
     }
   }
-
-  const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
   const isStopPhase = !!game.stopCalledBy;
   const valid = (isWinningMove || isStopPhase)
     ? (isValidSet(cards) || isValidWinningRun(cards))

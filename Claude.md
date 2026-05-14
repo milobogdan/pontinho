@@ -510,3 +510,15 @@ Add `?debug=true` to URL: `http://localhost:5173?debug=true`
 13. **Featured card** during firstKeepOrDiscard: `newCardId` persists (not auto-cleared) until phase changes. Uses `selected={selectedCards.includes(id) || isFeatured}` on Card component to reuse the built-in lift+glow style.
 
 14. **Back to Home** button (`onLeave` prop on Game): only shown on `gameOver` screen, NOT on `roundEnd`.
+
+15. **canGoOut(cards)** helper in gameState.js — recursively checks if remaining hand cards can be fully partitioned into valid melds (using `isValidWinningRun`). Used by `playMeld` and `extendMeld` to allow winning-run rules (Joker at start/end) even on the first meld of a multi-meld win. A lone Joker returns false (can't be discarded).
+
+16. **data-player-id** attribute on every player panel (opponents) and hand area (local player). Used by reaction bubbles and fly animations to find the correct DOM position via `document.querySelector('[data-player-id="..."]')`. **data-meld-id** on each meld div for extension fly targeting.
+
+17. **draggedId ref pattern**: `draggedIdRef` (useRef) is always set alongside `setDraggedIdState`. Event handlers read `draggedIdRef.current` to avoid stale closure issues with rapid drag events.
+
+18. **getRooms** only returns rooms where `room.game === null` (pure lobby state). Rooms in picking/playing/roundEnd/gameOver never appear in the join list. A 2-minute setInterval also cleans up rooms with no connected human sockets.
+
+19. **Bot gender matching**: `MALE_AVATARS = new Set(['sporty','nerdy','cool','grandpa','kid'])`, female = the other 5. On addBot, avatar is picked first, then name pool is filtered by gender. Names are Brazilian/international, ≤6 chars.
+
+20. **Meld fly animations**: `meldAreaRef` on the meld container, `prevMeldsRef` tracks previous meld state. On new meld: fly from owner's panel to meld area. On extension: fly from current player's panel to `data-meld-id` element. Uses same `getOpponentCenter` pattern as draw/discard animations.

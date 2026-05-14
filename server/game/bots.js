@@ -74,20 +74,6 @@ export function findWinningMelds(hand) {
   return null;
 }
 
-// Win check for normal turn (standard meld rules only)
-function findNormalWin(hand) {
-  const all = findAllMelds(hand, false);
-  if (all !== null) return { melds: all, discard: null };
-
-  for (let i = 0; i < hand.length; i++) {
-    const toMeld = hand.filter((_, idx) => idx !== i);
-    const melds = findAllMelds(toMeld, false);
-    if (melds !== null) return { melds, discard: hand[i] };
-  }
-
-  return null;
-}
-
 // ── THREAT LEVEL ──────────────────────────────────────────────────────────────
 
 function getThreatLevel(game, botId) {
@@ -305,16 +291,25 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
           drewFromDiscard = true;
           await delay(600);
           if (game.status !== 'playing') return;
-          // Play the run that includes the picked discard card
-          const pickedCard = bot().hand.find(c => c.id === topDiscard.id) || bot().hand.at(-1);
-          const meld = findMeldWith(bot().hand, pickedCard);
-          if (meld && isValidRun(meld)) {
-            const ids = meld.map(c => bot().hand.find(h => h.id === c.id)?.id).filter(Boolean);
-            if (ids.length === meld.length) {
-              playMeld(game, botId, ids);
-              broadcast();
-              await delay(500);
-              if (game.status !== 'playing') return;
+          // Check for a full win first (discard card may complete a winning set)
+          const winResultAfterDraw = findWinningMelds(bot().hand);
+          if (winResultAfterDraw && (!winResultAfterDraw.discard || !winResultAfterDraw.discard.isJoker)) {
+            await executeWin(game, botId, winResultAfterDraw, broadcast);
+            if (game.status !== 'playing') return;
+          } else {
+            // Play any meld that includes the picked discard card
+            const pickedCard = bot().hand.find(c => c.id === topDiscard.id) || bot().hand.at(-1);
+            const meld = findMeldWith(bot().hand, pickedCard);
+            if (meld) {
+              const ids = meld.map(c => bot().hand.find(h => h.id === c.id)?.id).filter(Boolean);
+              if (ids.length === meld.length) {
+                const mr = playMeld(game, botId, ids);
+                if (!mr.error) {
+                  broadcast();
+                  await delay(500);
+                  if (game.status !== 'playing') return;
+                }
+              }
             }
           }
         }
@@ -341,7 +336,7 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
     //    Hard: always. Medium: 80% chance. Easy: 20% chance (often misses wins).
     const winCheckChance = difficulty === 'hard' ? 1.0 : difficulty === 'medium' ? 0.8 : 0.2;
     if (Math.random() < winCheckChance) {
-      const winResult = findNormalWin(hand());
+      const winResult = findWinningMelds(hand());
       if (winResult && (!winResult.discard || !winResult.discard.isJoker)) {
         await executeWin(game, botId, winResult, broadcast);
         if (game.status !== 'playing' || hand().length === 0) return;
@@ -429,6 +424,13 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
         for (const card of [...hand()]) {
           if (card.isJoker) continue;
           if (canReplaceJoker(meld.cards, card)) {
+            // Only steal if we can immediately play the Joker (new meld or win)
+            const virtualJoker = { isJoker: true, id: '__vj__', rank: 'JOKER', value: 50 };
+            const handAfterSteal = [...hand().filter(c => c.id !== card.id), virtualJoker];
+            const hasMeldForJoker = findBestMeld(handAfterSteal)?.some(c => c.isJoker);
+            const canWinWithJoker = findWinningMelds(handAfterSteal) !== null;
+            if (!hasMeldForJoker && !canWinWithJoker) continue;
+
             const result = stealJoker(game, botId, meld.id, card.id);
             if (!result.error) {
               broadcast();
