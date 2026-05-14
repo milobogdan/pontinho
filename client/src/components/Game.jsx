@@ -801,8 +801,12 @@ function sortMeldCards(cards, type) {
               <div key={p.id} style={{ marginBottom:10, display:'flex', alignItems:'center', gap:10 }}>
                 <Avatar id={p.avatarId || 'sporty'} size={26} />
                 <span style={{ fontSize:12, fontWeight:700, opacity:0.7, minWidth:50 }}>{p.name}</span>
-                <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
-                  {sortHandForReveal(revealedHands[p.id]).map(c => <Card key={c.id} card={c} small />)}
+                <div style={{ display:'flex', flexWrap:'wrap' }}>
+                  {sortHandForReveal(revealedHands[p.id]).map((c, i) => (
+                    <div key={c.id} style={{ marginLeft: i === 0 ? 0 : -20, zIndex: i }}>
+                      <Card card={c} small />
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
