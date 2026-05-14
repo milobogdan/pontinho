@@ -778,7 +778,7 @@ function sortMeldCards(cards, type) {
           animate={{ scale:1, rotate:0 }}
           transition={{ delay:0.2, duration:0.5, ease:'backOut' }}
           style={{ textAlign:'center' }}>
-          <div style={{ fontSize:64, marginBottom:8 }}>{isGameOver ? '🏆' : '🎉'}</div>
+          {isGameOver && <div style={{ fontSize:64, marginBottom:8 }}>🏆</div>}
           <h1 style={{ fontFamily:"'Fredoka One',cursive", fontSize:42, marginBottom:4 }}>
             {isGameOver ? t.gameOver : t.roundOver}
           </h1>
