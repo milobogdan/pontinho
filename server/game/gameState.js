@@ -275,13 +275,6 @@ export function extendMeld(game, playerId, meldId, cardIds) {
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
   const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
 
-  if (game.pickedFromDiscard) {
-    const usesDiscardCard = cards.find(c => c.id === game.pickedDiscardCard.id);
-    if (usesDiscardCard && meld.type === 'set' && !isWinningMove) {
-      return { error: 'Card picked from discard pile can only be used in a run' };
-    }
-  }
-
   const combined = [...meld.cards, ...cards];
   const valid = (isWinningMove || game.stopCalledBy)
     ? (isValidExtension(meld.cards, cards) || isValidWinningRun(combined))
