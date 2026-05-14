@@ -67,6 +67,7 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
   const [isMuted, setIsMuted] = useState(false);
   const [showRoundEnd, setShowRoundEnd] = useState(false);
   const [nextRoundCountdown, setNextRoundCountdown] = useState(null);
+  const [revealedHands, setRevealedHands] = useState(null);
   const [isMobileLayout, setIsMobileLayout] = useState(() => window.innerWidth < 768);
   const [roundStartScores, setRoundStartScores] = useState({});
   const [reactions, setReactions] = useState([]);
@@ -318,6 +319,7 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     if (gameState?.status !== 'roundEnd' && gameState?.status !== 'gameOver') {
       setShowRoundEnd(false);
       setNextRoundCountdown(null);
+      setRevealedHands(null);
     }
   }, [gameState?.status]);
 
@@ -354,6 +356,17 @@ export default function Game({ roomInfo, onLeave, lang = 'en' }) {
     }
 
     prevStatusRef2.current = status;
+  }, [gameState]);
+
+  useEffect(() => {
+    if (gameState?.status === 'roundEnd' || gameState?.status === 'gameOver') {
+      // Capture any non-empty hands as they arrive from the server
+      const hands = {};
+      gameState.players.forEach(p => {
+        if (p.hand?.length > 0 && !p.hand[0]?.hidden) hands[p.id] = p.hand;
+      });
+      if (Object.keys(hands).length > 0) setRevealedHands(hands);
+    }
   }, [gameState]);
 
   useEffect(() => {
@@ -743,7 +756,7 @@ function sortMeldCards(cards, type) {
         </motion.div>
 
         {/* Card reveal — what each player had left */}
-        {gameState.players.some(p => p.hand?.length > 0 && p.id !== gameState.winner) && (
+        {revealedHands && Object.keys(revealedHands).length > 0 && (
           <motion.div
             initial={{ opacity:0, y:20 }}
             animate={{ opacity:1, y:0 }}
@@ -755,13 +768,13 @@ function sortMeldCards(cards, type) {
               What they had
             </h4>
             {gameState.players
-              .filter(p => p.hand?.length > 0)
+              .filter(p => revealedHands[p.id]?.length > 0)
               .map(p => (
               <div key={p.id} style={{ marginBottom:10, display:'flex', alignItems:'center', gap:10 }}>
                 <Avatar id={p.avatarId || 'sporty'} size={26} />
                 <span style={{ fontSize:12, fontWeight:700, opacity:0.7, minWidth:50 }}>{p.name}</span>
                 <div style={{ display:'flex', flexWrap:'wrap', gap:3 }}>
-                  {(p.hand || []).map(c => <Card key={c.id} card={c} size="small" />)}
+                  {revealedHands[p.id].map(c => <Card key={c.id} card={c} small />)}
                 </div>
               </div>
             ))}
