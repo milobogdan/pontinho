@@ -783,46 +783,7 @@ function sortMeldCards(cards, type) {
           {winner && <p style={{ fontSize:20, fontWeight:700, opacity:0.9 }}>{t.wins(winner.name)}</p>}
         </motion.div>
 
-        {/* Card reveal — what each player had left */}
-        {revealedHands && Object.keys(revealedHands).length > 0 && (
-          <motion.div
-            initial={{ opacity:0, y:20 }}
-            animate={{ opacity:1, y:0 }}
-            transition={{ delay:0.1, duration:0.4 }}
-            style={{ background:'rgba(0,0,0,0.3)', borderRadius:16, padding:'16px 20px',
-              width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.08)' }}>
-            <h4 style={{ fontFamily:"'Fredoka One',cursive", fontSize:17, marginBottom:12,
-              opacity:0.8, textAlign:'center' }}>
-              What they had
-            </h4>
-            {gameState.players
-              .filter(p => revealedHands[p.id]?.length > 0)
-              .map(p => {
-                const cards = sortHandForReveal(revealedHands[p.id]);
-                const n = cards.length;
-                // fit cards within available screen width (account for box padding ~80px)
-                const availableW = Math.min(window.innerWidth - 80, 400);
-                const step = n > 1 ? Math.min(44, Math.floor(availableW / n)) : 48;
-                const overlap = -(48 - step);
-                return (
-                  <div key={p.id} style={{ marginBottom:14 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
-                      <Avatar id={p.avatarId || 'sporty'} size={22} />
-                      <span style={{ fontSize:12, fontWeight:700, opacity:0.6 }}>{p.name}</span>
-                    </div>
-                    <div style={{ display:'flex', flexWrap:'nowrap' }}>
-                      {cards.map((c, i) => (
-                        <div key={c.id} style={{ marginLeft: i === 0 ? 0 : overlap, zIndex: i, flexShrink:0 }}>
-                          <Card card={c} small />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-          </motion.div>
-        )}
-
+        {/* Scoreboard */}
         <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
           width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.1)' }}>
           <h3 style={{ fontFamily:"'Fredoka One',cursive", fontSize:22, marginBottom:16, textAlign:'center' }}>
@@ -872,6 +833,46 @@ function sortMeldCards(cards, type) {
             </motion.div>
           ))}
         </div>
+
+        {/* Card reveal — what each player had left */}
+        {revealedHands && Object.keys(revealedHands).length > 0 && (
+          <motion.div
+            initial={{ opacity:0, y:20 }}
+            animate={{ opacity:1, y:0 }}
+            transition={{ delay:0.1, duration:0.4 }}
+            style={{ background:'rgba(0,0,0,0.3)', borderRadius:16, padding:'16px 20px',
+              width:'100%', maxWidth:480, border:'1px solid rgba(255,255,255,0.08)' }}>
+            <h4 style={{ fontFamily:"'Fredoka One',cursive", fontSize:17, marginBottom:12,
+              opacity:0.8, textAlign:'center' }}>
+              What they had
+            </h4>
+            {gameState.players
+              .filter(p => revealedHands[p.id]?.length > 0)
+              .map(p => {
+                const cards = sortHandForReveal(revealedHands[p.id]);
+                const n = cards.length;
+                // fit cards within available screen width (account for box padding ~80px)
+                const availableW = Math.min(window.innerWidth - 80, 400);
+                const step = n > 1 ? Math.min(44, Math.floor(availableW / n)) : 48;
+                const overlap = -(48 - step);
+                return (
+                  <div key={p.id} style={{ marginBottom:14 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:6 }}>
+                      <Avatar id={p.avatarId || 'sporty'} size={22} />
+                      <span style={{ fontSize:12, fontWeight:700, opacity:0.6 }}>{p.name}</span>
+                    </div>
+                    <div style={{ display:'flex', flexWrap:'nowrap' }}>
+                      {cards.map((c, i) => (
+                        <div key={c.id} style={{ marginLeft: i === 0 ? 0 : overlap, zIndex: i, flexShrink:0 }}>
+                          <Card card={c} small />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+          </motion.div>
+        )}
 
         <div style={{ display:'flex', gap:14, flexWrap:'wrap', justifyContent:'center' }}>
           {!isGameOver && (
