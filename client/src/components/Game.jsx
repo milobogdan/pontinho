@@ -611,7 +611,7 @@ function sortMeldCards(cards, type) {
   function onDragOver(e, targetId) {
     e.preventDefault();
     const dragged = draggedIdRef.current;
-    if (!dragged || dragged === targetId) return;
+    if (dragged === null || dragged === targetId) return;
     setHandOrder(prev => {
       const next    = [...prev];
       const fromIdx = next.indexOf(dragged);
