@@ -273,6 +273,7 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
     socket.emit('getGameState', (res) => {
       if (res?.state) setGameState(res.state);
     });
+    if (isDebug) socket.emit('setDebugMode', { enabled: true });
     return () => {
       socket.off('gameState');
       socket.off('stopTimeout');
@@ -1193,18 +1194,18 @@ function sortMeldCards(cards, type) {
         {others.map(p => {
           const isActive = currentPlayer?.id === p.id;
           const avatarSize = isMobileLayout ? 22 : 40;
-          const cardW = isMobileLayout ? 30 : 48;
-          const fanH = isMobileLayout ? 32 : 52;
-          const maxFanW = isMobileLayout ? 80 : 130;
+          const cardW = isDebug ? 60 : isMobileLayout ? 30 : 48;
+          const fanH = isDebug ? 90 : isMobileLayout ? 32 : 52;
+          const maxFanW = isDebug ? 999 : isMobileLayout ? 80 : 130;
           return (
             <div key={p.id} data-player-id={p.id} style={{
               background: isActive ? 'rgba(244,165,34,0.12)' : 'rgba(0,0,0,0.28)',
               border: `2px solid ${isActive ? '#f4a522' : 'rgba(255,255,255,0.08)'}`,
               borderRadius:14,
               padding: isMobileLayout ? '5px 8px' : '8px 12px',
-              flex:1,
-              minWidth: isMobileLayout ? 80 : 130,
-              maxWidth: isMobileLayout ? 140 : 200,
+              flex: isDebug ? '0 0 auto' : 1,
+              minWidth: isDebug ? 120 : isMobileLayout ? 80 : 130,
+              maxWidth: isDebug ? 'none' : isMobileLayout ? 140 : 200,
               transition:'all 0.3s',
               boxShadow: isActive ? '0 0 20px rgba(244,165,34,0.2)' : 'none',
               position:'relative',
@@ -1255,8 +1256,8 @@ function sortMeldCards(cards, type) {
               </div>
               {(() => {
                 const count = (p.hand || []).length;
-                const offset = count <= 1 ? 0 : Math.min(isMobileLayout ? 8 : 12, (maxFanW - cardW) / (count - 1));
-                const totalW = count > 0 ? cardW + (count - 1) * offset : cardW;
+                const offset = isDebug ? cardW + 4 : count <= 1 ? 0 : Math.min(isMobileLayout ? 8 : 12, (maxFanW - cardW) / (count - 1));
+                const totalW = isDebug ? count * (cardW + 4) : count > 0 ? cardW + (count - 1) * offset : cardW;
                 return (
                   <div style={{ position:'relative', height:fanH, width:totalW, marginTop: isMobileLayout ? 2 : 4 }}>
                     {(p.hand || []).map((c, i) => (
@@ -1265,7 +1266,7 @@ function sortMeldCards(cards, type) {
                         animate={{ opacity:1, x:0 }}
                         transition={{ duration:0.25, delay: i * 0.04 }}
                         style={{ position:'absolute', left: i * offset, top:0, zIndex:i }}>
-                        <Card card={c} small={!isMobileLayout} tiny={isMobileLayout} />
+                        <Card card={c} medium={isDebug} small={!isDebug && !isMobileLayout} tiny={!isDebug && isMobileLayout} />
                       </motion.div>
                     ))}
                     <div style={{
@@ -1634,7 +1635,7 @@ function sortMeldCards(cards, type) {
       {/* Flying card animation */}
       {flyAnim && (
         <motion.div
-          style={{ position:'fixed', top:0, left:0, zIndex:1000, pointerEvents:'none' }}
+          style={{ position:'fixed', top:0, left:0, zIndex:300, pointerEvents:'none' }}
           initial={{ x: flyAnim.fromX - 35, y: flyAnim.fromY - 50, opacity:1, scale:1 }}
           animate={{ x: flyAnim.toX - 35, y: flyAnim.toY - 50, opacity:0, scale:0.75 }}
           transition={{ duration:0.38, ease:'easeIn' }}

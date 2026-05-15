@@ -586,6 +586,13 @@ io.on('connection', (socket) => {
     callback({ success: true, state: view });
   });
 
+  // ── CHECK ROOM (validate rejoin before showing banner) ─────────
+  socket.on('checkRoom', ({ roomCode, playerId }, callback) => {
+    const room = rooms[roomCode];
+    const valid = !!(room && room.players.some(p => p.id === playerId));
+    callback?.({ valid });
+  });
+
   // ── REJOIN ROOM ────────────────────────────────────────────────
   socket.on('rejoinRoom', ({ roomCode, playerId }, callback) => {
     const room = rooms[roomCode];

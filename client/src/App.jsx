@@ -27,7 +27,16 @@ export default function App() {
   useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('pontinho_rejoin'));
-      if (stored?.code && stored?.playerId) setPendingRejoin(stored);
+      if (stored?.code && stored?.playerId) {
+        // Validate the room still exists before showing the banner
+        socket.emit('checkRoom', { roomCode: stored.code, playerId: stored.playerId }, (res) => {
+          if (res?.valid) {
+            setPendingRejoin(stored);
+          } else {
+            localStorage.removeItem('pontinho_rejoin');
+          }
+        });
+      }
     } catch {}
     try {
       const sg = JSON.parse(localStorage.getItem('pontinho_saved_game'));

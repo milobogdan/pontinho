@@ -60,6 +60,35 @@ function findAllMelds(cards, useWinningRules = false) {
   return null;
 }
 
+// Check if all hand cards can be placed into existing table melds (or win with remainder)
+// Used to detect wins where the bot only needs to extend table runs (e.g. slot Jokers)
+function canWinByExtending(hand, tableMemds) {
+  if (!tableMemds || !tableMemds.length) return false;
+  const simMemds = tableMemds.map(m => ({ ...m, cards: [...m.cards] }));
+  const simHand = [...hand];
+
+  let changed = true;
+  while (changed && simHand.length > 0) {
+    changed = false;
+    for (const meld of simMemds) {
+      for (let i = simHand.length - 1; i >= 0; i--) {
+        const card = simHand[i];
+        if (isValidExtension(meld.cards, [card])) {
+          meld.cards.push(card);
+          simHand.splice(i, 1);
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+
+  if (simHand.length === 0) return true;
+  if (simHand.length === 1 && !simHand[0].isJoker) return true;
+  return findAllMelds(simHand, true) !== null;
+}
+
 // Exported — used by checkBotStop in index.js (winning rules: Joker at start/end allowed)
 export function findWinningMelds(hand) {
   const all = findAllMelds(hand, true);
@@ -167,6 +196,9 @@ function pickDiscardCard(hand, difficulty, melds = [], threat = 'low') {
 
 function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
   if (!topDiscard) return false;
+
+  // Does it complete a winning hand? (highest priority for non-easy bots)
+  if (difficulty !== 'easy' && findWinningMelds([...hand, topDiscard])) return true;
 
   // Does it immediately complete a run with hand cards?
   const withCard = [...hand, topDiscard];
@@ -333,21 +365,25 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
     const hand = () => bot().hand;
 
     // 1. CHECK FOR WIN FIRST ─────────────────────────────────────────────
-    //    Hard: always. Medium: 80% chance. Easy: 20% chance (often misses wins).
-    const winCheckChance = difficulty === 'hard' ? 1.0 : difficulty === 'medium' ? 0.8 : 0.2;
+    //    Hard/Medium: always. Easy: 20% chance (often misses wins).
+    const winCheckChance = difficulty === 'easy' ? 0.2 : 1.0;
     if (Math.random() < winCheckChance) {
       const winResult = findWinningMelds(hand());
       if (winResult) {
         await executeWin(game, botId, winResult, broadcast);
         if (game.status !== 'playing' || hand().length === 0) return;
+      } else if (difficulty !== 'easy' && canWinByExtending(hand(), game.melds)) {
+        // Win by extending existing table melds (e.g. slotting Jokers into runs)
+        await executeWin(game, botId, { melds: [], discard: null }, broadcast);
+        if (game.status !== 'playing' || hand().length === 0) return;
       }
     }
     if (game.status !== 'playing') return;
 
-    // 2. JOKER URGENCY (hard only) ────────────────────────────────────────
+    // 2. JOKER URGENCY (medium/hard) ──────────────────────────────────────
     //    If holding a Joker: slot it into a table run immediately if possible,
     //    or play it in a new meld. Never sit on a Joker (50 pt penalty).
-    if (difficulty === 'hard' && hand().some(c => c.isJoker)) {
+    if ((difficulty === 'hard' || difficulty === 'medium') && hand().some(c => c.isJoker)) {
       const slotted = await trySlotJokerIntoRun(game, botId, broadcast);
       if (slotted) {
         await delay(300);
@@ -408,6 +444,17 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
             if (game.status !== 'playing') return;
             break;
           }
+        }
+      }
+      // Re-check for win after extending table melds
+      if (game.status === 'playing' && hand().length > 0) {
+        const winAfterExtend = findWinningMelds(hand());
+        if (winAfterExtend) {
+          await executeWin(game, botId, winAfterExtend, broadcast);
+          if (game.status !== 'playing' || hand().length === 0) return;
+        } else if (canWinByExtending(hand(), game.melds)) {
+          await executeWin(game, botId, { melds: [], discard: null }, broadcast);
+          if (game.status !== 'playing' || hand().length === 0) return;
         }
       }
     }
