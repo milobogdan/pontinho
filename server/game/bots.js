@@ -75,7 +75,9 @@ function canWinByExtending(hand, tableMemds) {
     for (const meld of simMemds) {
       for (let i = simHand.length - 1; i >= 0; i--) {
         const card = simHand[i];
-        if (isValidExtension(meld.cards, [card])) {
+        const combined = [...meld.cards, card];
+        // Also allow winning-run extensions (Joker at start/end) — mirrors extendMeld server logic
+        if (isValidExtension(meld.cards, [card]) || isValidWinningRun(combined)) {
           meld.cards.push(card);
           simHand.splice(i, 1);
           changed = true;
@@ -173,7 +175,7 @@ function cardUsefulness(card, hand, melds) {
   // Same rank as another hand card (potential set)
   // Pair bonus scales inversely with scoring penalty:
   // low-value pairs (2s, 3s) are worth keeping; high-value pairs (Ks, Aces) are risky
-  const sameRank = others.filter(c => c.rank === card.rank);
+  const sameRank = others.filter(c => c.rank === card.rank && c.suit !== card.suit);
   if (sameRank.length >= 2) return penalty + 50; // three-of-a-kind: definitely keep
   if (sameRank.length === 1) return 20 - penalty * 2; // pair: positive for cheap cards, negative for expensive ones
 
