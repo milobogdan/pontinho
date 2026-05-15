@@ -47,6 +47,8 @@ function findMeldWith(hand, card) {
 // Finds all melds that can partition the cards (uses winning run rules for going-out detection)
 function findAllMelds(cards, useWinningRules = false) {
   if (cards.length === 0) return [];
+  // 1 non-Joker card left = can always be discarded to win; 1 Joker = stuck (can't discard)
+  if (cards.length === 1) return cards[0].isJoker ? null : [];
   const isValid = (combo) => isValidMeld(combo) || (useWinningRules && isValidWinningRun(combo));
   for (let size = Math.min(cards.length, 7); size >= 3; size--) {
     for (const combo of getCombinations(cards, size)) {
@@ -150,6 +152,11 @@ function shouldHoldCards(botScore, threat) {
 function cardUsefulness(card, hand, melds) {
   if (card.isJoker) return Infinity;
 
+  // Scoring penalty: actual points cost if this card is caught in hand at round end
+  // Multiple Aces cost 14pts each (not 1pt); single Ace costs 1pt
+  const aceCount = hand.filter(c => c.rank === 'A').length;
+  const penalty = (card.rank === 'A' && aceCount > 1) ? 14 : card.value;
+
   // Can replace a Joker on the table? Very valuable.
   if (melds.some(m => m.type === 'run' && canReplaceJoker(m.cards, card))) return Infinity;
 
@@ -159,17 +166,19 @@ function cardUsefulness(card, hand, melds) {
   const sameSuit = others.filter(c => c.suit === card.suit);
   for (const other of sameSuit) {
     const diff = Math.abs(card.value - other.value);
-    if (diff === 1) return card.value + 60; // adjacent — strong run potential
-    if (diff === 2) return card.value + 40; // one gap — Joker could fill it
+    if (diff === 1) return penalty + 60; // adjacent — strong run potential
+    if (diff === 2) return penalty + 40; // one gap — Joker could fill it
   }
 
   // Same rank as another hand card (potential set)
+  // Pair bonus scales inversely with scoring penalty:
+  // low-value pairs (2s, 3s) are worth keeping; high-value pairs (Ks, Aces) are risky
   const sameRank = others.filter(c => c.rank === card.rank);
-  if (sameRank.length >= 2) return card.value + 50; // three-of-a-kind possible
-  if (sameRank.length === 1) return card.value + 25; // pair — one more needed
+  if (sameRank.length >= 2) return penalty + 50; // three-of-a-kind: definitely keep
+  if (sameRank.length === 1) return 20 - penalty * 2; // pair: positive for cheap cards, negative for expensive ones
 
-  // Isolated card — penalise by its score value (high value = worse to keep)
-  return -card.value;
+  // Isolated card — penalise by actual scoring value
+  return -penalty;
 }
 
 function pickDiscardCard(hand, difficulty, melds = [], threat = 'low') {
