@@ -62,6 +62,24 @@ function findAllMelds(cards, useWinningRules = false) {
   return null;
 }
 
+// Returns true if this meld is a run whose value range is directly contiguous with
+// an existing table run of the same suit (prefer extending over creating a new isolated run)
+function isRunContiguousWithTable(meld, tableMelds) {
+  if (!isValidRun(meld)) return false;
+  const nonJokers = meld.filter(c => !c.isJoker);
+  if (!nonJokers.length) return false;
+  const suit = nonJokers[0].suit;
+  const vals = nonJokers.map(c => c.value).sort((a, b) => a - b);
+  return tableMelds.some(m => {
+    if (m.type !== 'run') return false;
+    const mNJ = m.cards.filter(c => !c.isJoker);
+    if (!mNJ.length || mNJ[0].suit !== suit) return false;
+    const mVals = mNJ.map(c => c.value).sort((a, b) => a - b);
+    return vals[0] === mVals[mVals.length - 1] + 1  // new run appends to table run's end
+        || mVals[0] === vals[vals.length - 1] + 1;  // new run prepends to table run's start
+  });
+}
+
 // Check if all hand cards can be placed into existing table melds (or win with remainder)
 // Used to detect wins where the bot only needs to extend table runs (e.g. slot Jokers)
 function canWinByExtending(hand, tableMemds) {
@@ -461,6 +479,8 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
     // 3. PLAY NORMAL MELDS ────────────────────────────────────────────────
     //    Hard near 200 holds back (score guard) — unless under critical threat
     //    where even guarded bots play to minimise hand penalty.
+    //    Skip new run if those cards are contiguous with an existing table run —
+    //    step 4 will extend instead (safer: avoids creating connectable gaps).
     const canPlayMelds = !holding || (difficulty === 'hard' && currentThreat === 'critical');
     if (canPlayMelds) {
       const meldLimit = difficulty === 'easy' ? 1 : 10;
@@ -469,6 +489,8 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
         if (difficulty === 'easy' && Math.random() > 0.4) break;
         const meld = findBestMeld(hand());
         if (!meld) break;
+        // Prefer extending an existing table run over creating a new isolated one
+        if (difficulty !== 'easy' && isRunContiguousWithTable(meld, game.melds)) break;
         const result = playMeld(game, botId, meld.map(c => c.id));
         if (result.error) break;
         broadcast();
@@ -489,17 +511,24 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
 
     // 4. EXTEND TABLE MELDS (medium/hard) ────────────────────────────────
     //    Skip if score-guarding, unless critical threat forces hand reduction.
+    //    Retry loop: keep extending the same meld until no more cards fit,
+    //    so all contiguous hand cards are played in one turn (not spread across turns).
     if (difficulty !== 'easy' && (!holding || currentThreat === 'critical')) {
-      for (const meld of game.melds) {
-        if (hand().length <= 1) break;
-        for (const card of [...hand()]) {
-          if (card.isJoker) continue;
-          const result = extendMeld(game, botId, meld.id, [card.id]);
-          if (!result.error) {
-            broadcast();
-            await delay(400);
-            if (game.status !== 'playing') return;
-            break;
+      let anyExtended = true;
+      while (anyExtended) {
+        anyExtended = false;
+        for (const meld of game.melds) {
+          if (hand().length <= 1) break;
+          for (const card of [...hand()]) {
+            if (card.isJoker) continue;
+            const result = extendMeld(game, botId, meld.id, [card.id]);
+            if (!result.error) {
+              broadcast();
+              await delay(400);
+              if (game.status !== 'playing') return;
+              anyExtended = true;
+              break;
+            }
           }
         }
       }
