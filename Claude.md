@@ -69,8 +69,8 @@ card-game/
 
 ### Melds
 **Sets:**
-- Exactly 3 cards, same rank, 3 DIFFERENT suits. No Jokers.
-- Can extend with same-rank cards of those 3 suits only (max 6 cards, max 2 per suit)
+- 3–6 cards, same rank, at least 3 different suits, max 2 per suit. No Jokers.
+- Can meld 3–6 cards at once; can also extend an existing set (same rules apply)
 
 **Runs:**
 - 3+ sequential same-suit cards
