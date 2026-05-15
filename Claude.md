@@ -403,9 +403,10 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 
 ## Meld Display
 - All melds use negative-margin overlap layout (no absolute positioning)
-- **flex-basis per meld**: mobile ≤7 cards = `calc(50% - 4px)`, desktop ≤4 cards = `calc(33.3% - 6px)`, 5-7 cards = `calc(50% - 4px)`, 8+ = `100%`
-- Overlap step computed from expected inner width: `step = max(16, (innerW - cardW) / (n-1))`
-- Both use Framer Motion `initial={{ opacity:0, scale:0.5, y:-20 }}` → `animate={{ opacity:1, scale:1, y:0 }}`
+- **Desktop**: meld container `justifyContent:'center'`; each meld box is `flex:'0 0 auto'` (auto-sizes to content, no empty space)
+- **Mobile**: meld container `justifyContent:'flex-start'`; `flex-basis` = `calc(50% - 4px)` (2-per-row), 8+ cards = `100%`; overlap computed from `mobileInnerW`
+- Overlap only applied on mobile when cards don't fit; desktop never overlaps (box auto-expands)
+- Framer Motion `initial={{ opacity:0, scale:0.5, y:-20 }}` → `animate={{ opacity:1, scale:1, y:0 }}`
 
 ---
 
@@ -441,6 +442,10 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 
 ### 🔴 Important Fixes
 - First turn redesign (remove keep/discard buttons, float card visually between piles)
+- **Security: set NODE_ENV=production on Render** — closes the `debugSetState` endpoint in prod (any connected socket can currently set arbitrary hands/turns if this env var is missing; go to Render → Environment → add NODE_ENV=production)
+- **Security: validate `restoreGame` savedState** — server spreads raw client localStorage data into game state; replace with a whitelist of known fields to prevent score/status manipulation
+- **Security: host-only checks** — `removeBot`, `addBot`, `setRoomOptions`, `setDebugMode` have no authorization; any player in the room can call them, not just the host
+- **Security: input length limits** — `playerName`, `gameName`, `message` have no max length; a bad actor could send MB-sized strings to bloat server memory
 
 ### 🟢 High Impact Features
 - Round-by-round score history — expandable table in scoreboard showing per-round deltas per player
@@ -453,6 +458,7 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Analytics dashboard (who played, scores, game history)
 - Spectator mode (join active games, see all hands)
 - Custom favicon
+- **Security: rate limiting** — no cap on room creation or socket events; a script could create thousands of rooms or spam events to crash the free Render instance
 
 ### 🟣 Nice to Have
 - Audio balancing: reduce background music volume, increase sound effects (card, meld, discard, win, turn)
