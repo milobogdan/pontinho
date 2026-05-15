@@ -625,7 +625,7 @@ io.on('connection', (socket) => {
   });
 
 // ── DEBUG: SET GAME STATE ──────────────────────────────────────
-  socket.on('debugSetState', ({ hand, discardCard, melds, phase }, callback) => {
+  socket.on('debugSetState', ({ hand, discardCard, melds, phase, currentPlayerIndex, hands }, callback) => {
     if (process.env.NODE_ENV === 'production') return callback?.({ error: 'Not available in production' });
     const room = rooms[socket.data.roomCode];
     if (!room?.game) return callback?.({ error: 'No game' });
@@ -638,9 +638,30 @@ io.on('connection', (socket) => {
     }
     if (melds) room.game.melds = melds;
     if (phase) room.game.turnPhase = phase;
+    // Set specific players' hands by index: { "0": [...cards], "1": [...cards] }
+    if (hands) {
+      for (const [idx, h] of Object.entries(hands)) {
+        const p = room.game.players[parseInt(idx)];
+        if (p) p.hand = h;
+      }
+    }
+    // Override whose turn it is (also triggers bot turn if that player is a bot)
+    if (currentPlayerIndex !== undefined && room.game.players[currentPlayerIndex]) {
+      room.game.currentPlayerIndex = currentPlayerIndex;
+      room.game.pickedFromDiscard = false;
+      room.game.pickedDiscardCard = null;
+    }
 
     broadcastGameState(room);
     callback?.({ success: true });
+
+    // If the new current player is a bot, kick off their turn
+    if (currentPlayerIndex !== undefined) {
+      const nowCurrent = room.game.players[currentPlayerIndex];
+      if (nowCurrent?.isBot) {
+        processBotTurn(room);
+      }
+    }
   });
 
 // ── LEAVE ROOM ─────────────────────────────────────────────────

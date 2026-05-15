@@ -105,17 +105,21 @@ const SCENARIOS = [
   },
   {
     name: '🤖 Bot stuck: Joker+8s win',
-    desc: 'Sara\'s hand (after drawing 7♣). Win: JOKER fills ♥ gap→5♥, new [7♣8♣JOKER], extend ♥ run with 8♥+9♥, discard 8♠.',
-    phase: 'play',
-    hand: [
-      { id:'dbot1', isJoker:true, rank:'JOKER', suit:null, value:50 },
-      { id:'dbot2', suit:'hearts', rank:'8', value:8 },
-      { id:'dbot3', suit:'spades', rank:'8', value:8 },
-      { id:'dbot4', isJoker:true, rank:'JOKER', suit:null, value:50 },
-      { id:'dbot5', suit:'clubs',  rank:'8', value:8 },
-      { id:'dbot6', suit:'hearts', rank:'9', value:9 },
-      { id:'dbot7', suit:'clubs',  rank:'7', value:7 },
-    ],
+    desc: 'Use in a 1-bot game. Bot gets Sara\'s hand + 7♣ to draw. Bot should: fill ♥ gap (JOKER=5♥), meld [7♣8♣JOKER], extend ♥ with 8♥+9♥, discard 8♠.',
+    phase: 'draw',
+    currentPlayerIndex: 1, // bot is player index 1 (assumes human vs 1 bot)
+    hand: [{ id:'dhuman1', suit:'spades', rank:'2', value:2 }], // give human a minimal hand
+    hands: {
+      '1': [ // bot's hand: Sara's 6 cards (will draw 7♣ from discard)
+        { id:'dbot1', isJoker:true, rank:'JOKER', suit:null, value:50 },
+        { id:'dbot2', suit:'hearts', rank:'8', value:8 },
+        { id:'dbot3', suit:'spades', rank:'8', value:8 },
+        { id:'dbot4', isJoker:true, rank:'JOKER', suit:null, value:50 },
+        { id:'dbot5', suit:'clubs',  rank:'8', value:8 },
+        { id:'dbot6', suit:'hearts', rank:'9', value:9 },
+      ],
+    },
+    discard: { id:'d7c', suit:'clubs', rank:'7', value:7 },
     melds: [{
       id:'meld-dbg-1', type:'run', ownerId:'debug',
       cards: [
@@ -202,9 +206,11 @@ export default function DebugPanel({ gameState, roomInfo }) {
 
   function applyScenario(scenario) {
     const payload = {};
-    if (scenario.hand)    payload.hand    = scenario.hand;
-    if (scenario.discard) payload.discardCard = scenario.discard;
-    if (scenario.melds)   payload.melds   = scenario.melds;
+    if (scenario.hand)                 payload.hand                = scenario.hand;
+    if (scenario.discard)              payload.discardCard         = scenario.discard;
+    if (scenario.melds)                payload.melds               = scenario.melds;
+    if (scenario.hands)                payload.hands               = scenario.hands;
+    if (scenario.currentPlayerIndex !== undefined) payload.currentPlayerIndex = scenario.currentPlayerIndex;
     payload.phase = scenario.phase ?? 'play';
     socket.emit('debugSetState', payload, (res) => {
       if (res?.error) showMsg(`❌ ${res.error}`);
