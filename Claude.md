@@ -491,6 +491,12 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Dynamic disconnect timer: 60s with human opponents, 300s in bot-only games
 - Rejoin awareness: banner top-left on splash (top:64 to clear language buttons)
 - Card id=0 drag fix: `dragged === null` check instead of `!dragged` (Ace of Hearts deck 1 has id 0, which is falsy)
+- Bot same-suit pair fix: `cardUsefulness` no longer treats two 10♠ (2-deck duplicates) as a set pair
+- Bot stuck on winning hand: 4 fixes in bots.js — `findWinningMelds` skips Joker as discard candidate; `executeWin` reorders melds so `pickedDiscardCard` meld plays first; `filter(Boolean)` → `filter(id => id != null)` for card id=0 safety; `discardCard` error now force-calls `nextTurn` as last resort
+- Bot extends table runs fully in one turn: retry while-loop in step 4 so all contiguous cards (e.g. 5♠ and 6♠) are played in the same turn, not spread across turns
+- Bot prefers extending existing table run over creating a new isolated one: `isRunContiguousWithTable` helper skips new-meld step when the hand run is directly adjacent to a table run of the same suit
+- Meld sets of 3–6 cards at once: `isValidSet` now accepts 3–6 cards (was exactly 3); same rules as extension (≥3 suits, max 2 per suit)
+- Debug panel: `debugSetState` now accepts `hands` (per-player by index) and `currentPlayerIndex` to set bot hands and trigger bot turns for scenario testing
 
 ---
 
