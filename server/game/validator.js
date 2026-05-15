@@ -49,13 +49,15 @@ function isValidRun(cards) {
 }
 
 function isValidSet(cards) {
-  if (cards.length !== 3) return false;
+  if (cards.length < 3 || cards.length > 6) return false;
   if (cards.some(c => c.isJoker)) return false;
   const ranks = new Set(cards.map(c => c.rank));
   if (ranks.size !== 1) return false;
-  // No duplicate suits allowed in a set
-  const suits = cards.map(c => c.suit);
-  return new Set(suits).size === suits.length;
+  // At least 3 different suits, max 2 of any one suit (same rule as set extension)
+  const suitCounts = {};
+  for (const c of cards) suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1;
+  return Object.keys(suitCounts).length >= 3
+      && Object.values(suitCounts).every(n => n <= 2);
 }
 
 function isValidMeld(cards) {
