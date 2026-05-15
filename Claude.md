@@ -497,6 +497,13 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Bot prefers extending existing table run over creating a new isolated one: `isRunContiguousWithTable` helper skips new-meld step when the hand run is directly adjacent to a table run of the same suit
 - Meld sets of 3–6 cards at once: `isValidSet` now accepts 3–6 cards (was exactly 3); same rules as extension (≥3 suits, max 2 per suit)
 - Debug panel: `debugSetState` now accepts `hands` (per-player by index) and `currentPlayerIndex` to set bot hands and trigger bot turns for scenario testing
+- Debug panel duplicate select fix: click a card 1×/2× to add that many copies (×2 badge shown); third click removes both — mirrors the 2-deck reality
+- Bot meld strategy: `findBestMeld` now picks the meld with the highest total card value (not just the largest), so e.g. J+Joker+K is preferred over A+3+4+5
+- Bot steal Joker → win check: after `stealJoker` succeeds, bot immediately calls `findWinningMelds` before any `findBestMeld` so it doesn't miss an immediate win
+- Bot draw-from-discard guard: `shouldDrawDiscard` now rejects discard draws where the winning path plans to discard the drawn card itself (can't pick+immediately-discard)
+- Bot draw-from-discard stuck fix: execution path now also tries `stealJoker` with the picked card (not just `playMeld`/`extendMeld`), preventing the bot from being stuck with `pickedFromDiscard=true`
+- `canUseDiscardCard` steal+extend-table-run: after checking if stolen Joker + discard card can form a new hand run, also checks if they can extend a *different* table run — fixes the A♥-from-discard → steal Joker → extend [9♥10♥J♥Q♥] scenario
+- Scoreboard eliminated ordering: eliminated players always sorted last regardless of score; +0🏆 badge hidden for eliminated players (they didn't play that round)
 
 ---
 

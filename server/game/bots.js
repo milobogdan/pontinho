@@ -23,12 +23,18 @@ function getCombinations(arr, size) {
 
 function findBestMeld(hand) {
   const max = Math.min(hand.length, 7);
+  let bestMeld = null;
+  let bestValue = -1;
+  // Iterate largest to smallest so equal-value ties keep the bigger meld
   for (let size = max; size >= 3; size--) {
     for (const combo of getCombinations(hand, size)) {
-      if (isValidMeld(combo)) return combo;
+      if (isValidMeld(combo)) {
+        const val = combo.reduce((s, c) => s + c.value, 0);
+        if (val > bestValue) { bestValue = val; bestMeld = combo; }
+      }
     }
   }
-  return null;
+  return bestMeld;
 }
 
 function findMeldWith(hand, card) {
@@ -230,7 +236,10 @@ function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
   // Does it complete a winning hand (including via table meld extensions)?
   if (difficulty !== 'easy') {
     const handWithDiscard = [...hand, topDiscard];
-    if (findWinningMelds(handWithDiscard)) return true;
+    const winResult = findWinningMelds(handWithDiscard);
+    // Only draw if the winning path actually USES the picked card in a meld
+    // (not discards it — can't pick a card then immediately discard it)
+    if (winResult && winResult.discard?.id !== topDiscard.id) return true;
     if (canWinByExtending(handWithDiscard, melds)) return true;
   }
 
@@ -405,11 +414,24 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
                 }
               }
             }
-            // findMeldWith only checks normal run rules — if picked card needs winning-run rules,
-            // try extending a table meld instead so pickedFromDiscard gets cleared
+            // findMeldWith only checks normal run rules — try extending or stealing Joker
+            // with the picked card to clear pickedFromDiscard
             if (!playedPicked && pickedCard) {
               for (const m of game.melds) {
                 const r = extendMeld(game, botId, m.id, [pickedCard.id]);
+                if (!r.error) {
+                  broadcast();
+                  await delay(500);
+                  if (game.status !== 'playing') return;
+                  playedPicked = true;
+                  break;
+                }
+              }
+            }
+            if (!playedPicked && pickedCard) {
+              for (const m of game.melds) {
+                if (m.type !== 'run' || !canReplaceJoker(m.cards, pickedCard)) continue;
+                const r = stealJoker(game, botId, m.id, pickedCard.id);
                 if (!r.error) {
                   broadcast();
                   await delay(500);
@@ -569,6 +591,13 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
               broadcast();
               await delay(500);
               if (game.status !== 'playing') return;
+              // Check for immediate win first
+              const winAfterSteal = findWinningMelds(hand());
+              if (winAfterSteal) {
+                await executeWin(game, botId, winAfterSteal, broadcast);
+                if (game.status !== 'playing' || hand().length === 0) return;
+                break;
+              }
               // Immediately slot/play the stolen Joker
               if (difficulty === 'hard') {
                 await trySlotJokerIntoRun(game, botId, broadcast);

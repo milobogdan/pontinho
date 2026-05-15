@@ -157,6 +157,11 @@ function canUseDiscardCard(card, hand, melds) {
       if (canReplaceJoker(meld.cards, handCard)) {
         const handWithJoker = [...hand.filter(c => c.id !== handCard.id), virtualJoker];
         if (canFormRunWith(card, handWithJoker)) return true;
+        // Also check: stolen Joker + discard card extends a different table run
+        for (const otherMeld of (melds || [])) {
+          if (otherMeld === meld) continue;
+          if (isValidExtension(otherMeld.cards, [card, virtualJoker])) return true;
+        }
       }
     }
   }

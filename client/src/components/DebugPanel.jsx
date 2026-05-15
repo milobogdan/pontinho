@@ -132,9 +132,9 @@ const SCENARIOS = [
   },
 ];
 
-function MiniCard({ card, selected, onClick }) {
+function MiniCard({ card, selected, count, onClick }) {
   if (!card) return null;
-  if (card.isJoker) return (
+  const inner = card.isJoker ? (
     <div onClick={onClick} style={{
       width:36, height:50, borderRadius:5, background: selected ? '#fff9e6' : '#fff',
       border: selected ? '2px solid #f4a522' : '1px solid #ccc',
@@ -142,10 +142,7 @@ function MiniCard({ card, selected, onClick }) {
       fontSize:18, cursor:'pointer', flexShrink:0,
       boxShadow: selected ? '0 0 8px rgba(244,165,34,0.6)' : '0 1px 3px rgba(0,0,0,0.2)',
     }}>🃏</div>
-  );
-  const suitCode = { spades:'S', hearts:'H', diamonds:'D', clubs:'C' };
-  const rankCode = card.rank === '10' ? '0' : card.rank;
-  return (
+  ) : (
     <div onClick={onClick} style={{
       width:36, height:50, borderRadius:5, overflow:'hidden',
       border: selected ? '2px solid #f4a522' : '1px solid #ccc',
@@ -154,8 +151,22 @@ function MiniCard({ card, selected, onClick }) {
       transform: selected ? 'translateY(-4px)' : 'none',
       transition:'all 0.15s',
     }}>
-      <img src={`/cards/${rankCode}${suitCode[card.suit]}.png`}
+      <img src={`/cards/${card.rank === '10' ? '0' : card.rank}${{ spades:'S', hearts:'H', diamonds:'D', clubs:'C' }[card.suit]}.png`}
         style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+    </div>
+  );
+  return (
+    <div style={{ position:'relative', flexShrink:0 }}>
+      {inner}
+      {count >= 2 && (
+        <div style={{
+          position:'absolute', top:-5, right:-5,
+          width:16, height:16, borderRadius:'50%',
+          background:'#e63946', color:'#fff',
+          fontSize:9, fontWeight:900, lineHeight:'16px', textAlign:'center',
+          pointerEvents:'none',
+        }}>×2</div>
+      )}
     </div>
   );
 }
@@ -175,11 +186,16 @@ export default function DebugPanel({ gameState, roomInfo }) {
   }
 
   function toggleCard(card) {
-    setSelectedCards(prev =>
-      prev.find(c => c.id === card.id)
-        ? prev.filter(c => c.id !== card.id)
-        : [...prev, { ...card, id: `debug-hand-${card.id}` }]
-    );
+    setSelectedCards(prev => {
+      // Count copies by the deck card's original id (stored as _baseId)
+      const copies = prev.filter(c => c._baseId === card.id);
+      if (copies.length >= 2) {
+        // Third click: remove all copies
+        return prev.filter(c => c._baseId !== card.id);
+      }
+      // First or second click: add another copy with a unique id
+      return [...prev, { ...card, id: `debug-hand-${card.id}-${copies.length + 1}`, _baseId: card.id }];
+    });
   }
 
   function setDiscard(card) {
@@ -332,13 +348,16 @@ export default function DebugPanel({ gameState, roomInfo }) {
 
                 <div style={{ flex:1, overflowY:'auto', padding:'0 16px 16px' }}>
                   {/* Jokers */}
-                  <p style={{ fontSize:11, opacity:0.4, margin:'8px 0 4px' }}>JOKERS</p>
+                  <p style={{ fontSize:11, opacity:0.4, margin:'8px 0 4px' }}>JOKERS (click 1-2×)</p>
                   <div style={{ display:'flex', gap:4, marginBottom:8 }}>
-                    {deck.filter(c => c.isJoker).map(c => (
-                      <MiniCard key={c.id} card={c}
-                        selected={!!selectedCards.find(s => s.rank === 'JOKER' && s.suit === null)}
-                        onClick={() => toggleCard(c)} />
-                    ))}
+                    {deck.filter(c => c.isJoker).map(c => {
+                      const count = selectedCards.filter(s => s._baseId === c.id).length;
+                      return (
+                        <MiniCard key={c.id} card={c}
+                          selected={count > 0} count={count}
+                          onClick={() => toggleCard(c)} />
+                      );
+                    })}
                   </div>
 
                   {SUITS.map(suit => (
@@ -348,11 +367,14 @@ export default function DebugPanel({ gameState, roomInfo }) {
                         {SUIT_SYMBOLS[suit]} {suit.toUpperCase()}
                       </p>
                       <div style={{ display:'flex', flexWrap:'wrap', gap:4, marginBottom:4 }}>
-                        {deck.filter(c => c.suit === suit).map(c => (
-                          <MiniCard key={c.id} card={c}
-                            selected={!!selectedCards.find(s => s.rank === c.rank && s.suit === c.suit)}
-                            onClick={() => toggleCard(c)} />
-                        ))}
+                        {deck.filter(c => c.suit === suit).map(c => {
+                          const count = selectedCards.filter(s => s._baseId === c.id).length;
+                          return (
+                            <MiniCard key={c.id} card={c}
+                              selected={count > 0} count={count}
+                              onClick={() => toggleCard(c)} />
+                          );
+                        })}
                       </div>
                     </div>
                   ))}

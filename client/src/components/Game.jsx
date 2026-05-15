@@ -816,7 +816,10 @@ function sortMeldCards(cards, type) {
                 <div style={{ background:'rgba(0,0,0,0.35)', borderRadius:20, padding:24,
                   border:'1px solid rgba(255,255,255,0.1)' }}>
                   {[...gameState.players]
-                    .sort((a, b) => a.totalScore - b.totalScore)
+                    .sort((a, b) => {
+                      if (a.eliminated !== b.eliminated) return a.eliminated ? 1 : -1;
+                      return a.totalScore - b.totalScore;
+                    })
                     .map((p, rank) => (
                     <motion.div key={p.id}
                       initial={{ opacity:0, x:-30 }}
@@ -844,7 +847,7 @@ function sortMeldCards(cards, type) {
                               background:'rgba(230,57,70,0.15)', padding:'2px 7px', borderRadius:20 }}>
                               +{delta}
                             </span>
-                          ) : delta === 0 ? (
+                          ) : delta === 0 && !p.eliminated ? (
                             <span style={{ fontSize:13, fontWeight:700, color:'#80ff80',
                               background:'rgba(76,175,80,0.15)', padding:'2px 7px', borderRadius:20 }}>
                               +0 🏆
