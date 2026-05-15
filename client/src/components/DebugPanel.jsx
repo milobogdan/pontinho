@@ -103,6 +103,29 @@ const SCENARIOS = [
       ]
     }],
   },
+  {
+    name: '🤖 Bot stuck: Joker+8s win',
+    desc: 'Sara\'s hand (after drawing 7♣). Win: JOKER fills ♥ gap→5♥, new [7♣8♣JOKER], extend ♥ run with 8♥+9♥, discard 8♠.',
+    phase: 'play',
+    hand: [
+      { id:'dbot1', isJoker:true, rank:'JOKER', suit:null, value:50 },
+      { id:'dbot2', suit:'hearts', rank:'8', value:8 },
+      { id:'dbot3', suit:'spades', rank:'8', value:8 },
+      { id:'dbot4', isJoker:true, rank:'JOKER', suit:null, value:50 },
+      { id:'dbot5', suit:'clubs',  rank:'8', value:8 },
+      { id:'dbot6', suit:'hearts', rank:'9', value:9 },
+      { id:'dbot7', suit:'clubs',  rank:'7', value:7 },
+    ],
+    melds: [{
+      id:'meld-dbg-1', type:'run', ownerId:'debug',
+      cards: [
+        { id:'dm1', suit:'hearts', rank:'3', value:3 },
+        { id:'dm2', suit:'hearts', rank:'4', value:4 },
+        { id:'dm3', suit:'hearts', rank:'6', value:6 },
+        { id:'dm4', suit:'hearts', rank:'7', value:7 },
+      ]
+    }],
+  },
 ];
 
 function MiniCard({ card, selected, onClick }) {

@@ -99,6 +99,7 @@ export function findWinningMelds(hand) {
   if (all !== null) return { melds: all, discard: null };
 
   for (let i = 0; i < hand.length; i++) {
+    if (hand[i].isJoker) continue; // Jokers can never be discarded
     const toMeld = hand.filter((_, idx) => idx !== i);
     const melds = findAllMelds(toMeld, true);
     if (melds !== null) return { melds, discard: hand[i] };
@@ -248,9 +249,22 @@ function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
 async function executeWin(game, botId, winResult, broadcast) {
   const botRef = () => game.players.find(p => p.id === botId);
 
-  for (const meld of winResult.melds) {
+  // Sort melds so the one containing the picked discard card is played first
+  // (clears pickedFromDiscard early, preventing discardCard from being blocked)
+  let orderedMelds = [...winResult.melds];
+  if (game.pickedFromDiscard && game.pickedDiscardCard) {
+    const pickedId = game.pickedDiscardCard.id;
+    const pickedMeldIdx = orderedMelds.findIndex(m => m.some(c => c.id === pickedId));
+    if (pickedMeldIdx > 0) {
+      const [pickedMeld] = orderedMelds.splice(pickedMeldIdx, 1);
+      orderedMelds.unshift(pickedMeld);
+    }
+  }
+
+  for (const meld of orderedMelds) {
     if (game.status !== 'playing') return false;
-    const ids = meld.map(c => botRef().hand.find(h => h.id === c.id)?.id).filter(Boolean);
+    // Use id != null (not filter(Boolean)) so card id=0 (A♥ deck 1) is not dropped
+    const ids = meld.map(c => botRef().hand.find(h => h.id === c.id)?.id).filter(id => id != null);
     if (ids.length !== meld.length) continue;
     const result = playMeld(game, botId, ids);
     if (!result.error) {
@@ -273,6 +287,18 @@ async function executeWin(game, botId, winResult, broadcast) {
           extended = true;
           break;
         }
+      }
+    }
+  }
+
+  // If pickedFromDiscard still true (meld containing picked card failed), force it into a table meld
+  if (game.pickedFromDiscard && game.pickedDiscardCard) {
+    const pickedId = game.pickedDiscardCard.id;
+    const stillInHand = botRef().hand.find(c => c.id === pickedId);
+    if (stillInHand) {
+      for (const m of game.melds) {
+        const r = extendMeld(game, botId, m.id, [pickedId]);
+        if (!r.error) { broadcast(); await delay(300); break; }
       }
     }
   }
@@ -346,15 +372,31 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
           } else {
             // Play any meld that includes the picked discard card
             const pickedCard = bot().hand.find(c => c.id === topDiscard.id) || bot().hand.at(-1);
+            let playedPicked = false;
             const meld = findMeldWith(bot().hand, pickedCard);
             if (meld) {
-              const ids = meld.map(c => bot().hand.find(h => h.id === c.id)?.id).filter(Boolean);
+              // Use id != null so card id=0 (A♥ deck 1) is not dropped
+              const ids = meld.map(c => bot().hand.find(h => h.id === c.id)?.id).filter(id => id != null);
               if (ids.length === meld.length) {
                 const mr = playMeld(game, botId, ids);
                 if (!mr.error) {
                   broadcast();
                   await delay(500);
                   if (game.status !== 'playing') return;
+                  playedPicked = true;
+                }
+              }
+            }
+            // findMeldWith only checks normal run rules — if picked card needs winning-run rules,
+            // try extending a table meld instead so pickedFromDiscard gets cleared
+            if (!playedPicked && pickedCard) {
+              for (const m of game.melds) {
+                const r = extendMeld(game, botId, m.id, [pickedCard.id]);
+                if (!r.error) {
+                  broadcast();
+                  await delay(500);
+                  if (game.status !== 'playing') return;
+                  break;
                 }
               }
             }
@@ -543,7 +585,12 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
     }
 
     if (card) {
-      discardCard(game, botId, card.id);
+      const discResult = discardCard(game, botId, card.id);
+      if (discResult?.error) {
+        // discardCard blocked (e.g. pickedFromDiscard still true) — force nextTurn to unstick
+        console.warn('⚠️ Bot discard blocked, forcing nextTurn:', discResult.error);
+        nextTurn(game);
+      }
       broadcast();
     } else {
       console.log('⚠️ Bot truly stuck with only Jokers');
