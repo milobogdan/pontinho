@@ -1316,6 +1316,7 @@ function sortMeldCards(cards, type) {
             flexShrink:0,
             borderBottom:'1px solid rgba(255,255,255,0.06)',
             alignItems:'flex-start',
+            justifyContent: isMobileLayout ? 'flex-start' : 'center',
           }}>
             {gameState.melds.map(meld => {
               const sorted = sortMeldCards(meld.cards, meld.type);
@@ -1323,34 +1324,25 @@ function sortMeldCards(cards, type) {
               const cardW = isMobileLayout ? 48 : 60;
               const cardH = isMobileLayout ? 68 : 86;
 
-              // flex-basis: how many melds share a row
-              // mobile: 2-per-row always (8+ = full row)
-              // desktop: ≤4 cards = 3-per-row, 5-7 = 2-per-row, 8+ = full row
-              const flexBasis = n >= 8
-                ? '100%'
-                : (isMobileLayout || n >= 5)
-                  ? 'calc(50% - 4px)'
-                  : 'calc(33.3% - 6px)';
+              // Mobile: 2-per-row with overlap for many cards
+              // Desktop: auto-size each meld box (no forced percentages)
+              const flexBasis = isMobileLayout
+                ? (n >= 8 ? '100%' : 'calc(50% - 4px)')
+                : 'auto';
 
-              // Expected inner width of the meld (flex-basis minus horizontal padding)
-              const innerW = n >= 8
-                ? (isMobileLayout ? 330 : 700)
-                : (isMobileLayout || n >= 5)
-                  ? (isMobileLayout ? 150 : 340)
-                  : 220; // desktop 3-per-row
-
-              // Overlap: how many pixels each subsequent card is offset
+              // Mobile overlap calculation; desktop never needs overlap (box auto-sizes)
+              const mobileInnerW = n >= 8 ? 330 : 150;
               const noOverlapW = n * cardW + (n - 1) * 3;
-              const needsOverlap = noOverlapW > innerW;
+              const needsOverlap = isMobileLayout && noOverlapW > mobileInnerW;
               const step = needsOverlap && n > 1
-                ? Math.max(16, Math.floor((innerW - cardW) / (n - 1)))
+                ? Math.max(16, Math.floor((mobileInnerW - cardW) / (n - 1)))
                 : null;
 
               return (
                 <div key={meld.id} data-meld-id={meld.id} style={{
                   background:'rgba(0,0,0,0.22)', borderRadius:10,
                   padding:'8px 10px',
-                  flex: `0 1 ${flexBasis}`,
+                  flex: `0 0 ${flexBasis}`,
                   minWidth:0, boxSizing:'border-box',
                   border:'1px solid rgba(255,255,255,0.08)',
                 }}>

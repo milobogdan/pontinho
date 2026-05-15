@@ -197,8 +197,12 @@ function pickDiscardCard(hand, difficulty, melds = [], threat = 'low') {
 function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
   if (!topDiscard) return false;
 
-  // Does it complete a winning hand? (highest priority for non-easy bots)
-  if (difficulty !== 'easy' && findWinningMelds([...hand, topDiscard])) return true;
+  // Does it complete a winning hand (including via table meld extensions)?
+  if (difficulty !== 'easy') {
+    const handWithDiscard = [...hand, topDiscard];
+    if (findWinningMelds(handWithDiscard)) return true;
+    if (canWinByExtending(handWithDiscard, melds)) return true;
+  }
 
   // Does it immediately complete a run with hand cards?
   const withCard = [...hand, topDiscard];
