@@ -126,7 +126,10 @@ export function findWinningMelds(hand) {
     if (hand[i].isJoker) continue; // Jokers can never be discarded
     const toMeld = hand.filter((_, idx) => idx !== i);
     const melds = findAllMelds(toMeld, true);
-    if (melds !== null) return { melds, discard: hand[i] };
+    // melds.length > 0: at least one meld must be played when designating a discard.
+    // Without this, a 2-card hand [A, B] would falsely return { melds:[], discard:A }
+    // because findAllMelds([B]) = [] (1-card shortcut) even though B is never melded.
+    if (melds !== null && melds.length > 0) return { melds, discard: hand[i] };
   }
 
   return null;
@@ -240,7 +243,14 @@ function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
     // Only draw if the winning path actually USES the picked card in a meld
     // (not discards it — can't pick a card then immediately discard it)
     if (winResult && winResult.discard?.id !== topDiscard.id) return true;
-    if (canWinByExtending(handWithDiscard, melds)) return true;
+    // Win by extending: topDiscard must be consumed by an extension (not left as the loose discard).
+    // Simulate: topDiscard extends a table meld, then check if the remaining hand can win.
+    for (const m of melds) {
+      if (!isValidExtension(m.cards, [topDiscard])) continue;
+      const updatedMeld = { ...m, cards: [...m.cards, topDiscard] };
+      const updatedMelds = melds.map(x => x.id === m.id ? updatedMeld : x);
+      if (findWinningMelds(hand) !== null || canWinByExtending(hand, updatedMelds)) return true;
+    }
   }
 
   // Does it immediately complete a run with hand cards?
@@ -579,12 +589,20 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
         for (const card of [...hand()]) {
           if (card.isJoker) continue;
           if (canReplaceJoker(meld.cards, card)) {
-            // Only steal if we can immediately play the Joker (new meld or win)
+            // Only steal if we can immediately use the Joker (new meld, win, or extend a table run)
             const virtualJoker = { isJoker: true, id: '__vj__', rank: 'JOKER', value: 50 };
             const handAfterSteal = [...hand().filter(c => c.id !== card.id), virtualJoker];
             const hasMeldForJoker = findBestMeld(handAfterSteal)?.some(c => c.isJoker);
             const canWinWithJoker = findWinningMelds(handAfterSteal) !== null;
-            if (!hasMeldForJoker && !canWinWithJoker) continue;
+            // Allow stealing if Joker (alone or with a hand card) can extend a different table run
+            const canExtendWithJoker = game.melds.some(m => {
+              if (m === meld || m.type !== 'run' || m.cards.some(c => c.isJoker)) return false;
+              if (isValidExtension(m.cards, [virtualJoker])) return true;
+              return handAfterSteal.filter(c => !c.isJoker).some(o =>
+                isValidExtension(m.cards, [o, virtualJoker])
+              );
+            });
+            if (!hasMeldForJoker && !canWinWithJoker && !canExtendWithJoker) continue;
 
             const result = stealJoker(game, botId, meld.id, card.id);
             if (!result.error) {
@@ -598,17 +616,46 @@ export async function executeBotTurn(game, botId, difficulty, broadcast) {
                 if (game.status !== 'playing' || hand().length === 0) return;
                 break;
               }
-              // Immediately slot/play the stolen Joker
-              if (difficulty === 'hard') {
-                await trySlotJokerIntoRun(game, botId, broadcast);
-                if (game.status !== 'playing') return;
+              // Try extending a table run with Joker + optional hand cards (removes the most cards)
+              // This beats greedily slotting Joker into the first available run.
+              let stolenJokerUsed = false;
+              const stolenJoker = hand().find(c => c.isJoker);
+              if (stolenJoker) {
+                for (const tableMeld of game.melds) {
+                  if (tableMeld.type !== 'run' || tableMeld.cards.some(c => c.isJoker)) continue;
+                  const others = hand().filter(c => !c.isJoker);
+                  // Try Joker + decreasing number of hand cards (prefer removing the most)
+                  for (let sz = Math.min(others.length, 3); sz >= 0 && !stolenJokerUsed; sz--) {
+                    for (const combo of getCombinations(others, sz)) {
+                      const extCards = [...combo, stolenJoker];
+                      const combined = [...tableMeld.cards, ...extCards];
+                      if (isValidExtension(tableMeld.cards, extCards) || isValidWinningRun(combined)) {
+                        const ids = extCards.map(c => c.id).filter(id => id != null);
+                        const r = extendMeld(game, botId, tableMeld.id, ids);
+                        if (!r.error) {
+                          broadcast(); await delay(400);
+                          if (game.status !== 'playing') return;
+                          stolenJokerUsed = true; break;
+                        }
+                      }
+                    }
+                  }
+                  if (stolenJokerUsed) break;
+                }
               }
-              const jokerMeld = findBestMeld(hand());
-              if (jokerMeld) {
-                playMeld(game, botId, jokerMeld.map(c => c.id));
-                broadcast();
-                await delay(400);
-                if (game.status !== 'playing') return;
+              if (!stolenJokerUsed) {
+                // Fallback: slot Joker alone into any available run
+                if (difficulty === 'hard') {
+                  await trySlotJokerIntoRun(game, botId, broadcast);
+                  if (game.status !== 'playing') return;
+                }
+                // Or play Joker in a new meld
+                const jokerMeld = findBestMeld(hand());
+                if (jokerMeld) {
+                  playMeld(game, botId, jokerMeld.map(c => c.id));
+                  broadcast(); await delay(400);
+                  if (game.status !== 'playing') return;
+                }
               }
               break;
             }

@@ -504,6 +504,8 @@ Module-level `_isMuted` flag syncs with React `isMuted` state for sound effect s
 - Bot draw-from-discard stuck fix: execution path now also tries `stealJoker` with the picked card (not just `playMeld`/`extendMeld`), preventing the bot from being stuck with `pickedFromDiscard=true`
 - `canUseDiscardCard` steal+extend-table-run: after checking if stolen Joker + discard card can form a new hand run, also checks if they can extend a *different* table run — fixes the A♥-from-discard → steal Joker → extend [9♥10♥J♥Q♥] scenario
 - Scoreboard eliminated ordering: eliminated players always sorted last regardless of score; +0🏆 badge hidden for eliminated players (they didn't play that round)
+- Bot draw-from-discard false positive fix: `findWinningMelds` now requires `melds.length > 0` in its loop — prevents 2-card hands [A,B] from being falsely treated as winnable (old code returned `{melds:[],discard:A}` because 1-card `findAllMelds([B])=[]` shortcut); `shouldDrawDiscard` now simulates topDiscard going into each extension and checks if remaining hand wins — prevents drawing a card that would just be the "leftover discard"
+- Bot steal Joker improvement: guard now also allows stealing when Joker + a hand card can extend a table run (not just when a new 3-card meld exists); post-steal action tries multi-card extension (Joker + hand cards together) before greedily slotting Joker into the first available run — e.g. Q♣ steals Joker from [J♣JOKER K♣], then [5♣+Joker] extends [7♣8♣9♣] correctly
 
 ---
 
