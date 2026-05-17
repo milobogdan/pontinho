@@ -52,7 +52,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
               exit={{ opacity: 0 }}
               onClick={close}
               style={{
-                position: 'fixed', inset: 0, zIndex: 600,
+                position: 'fixed', inset: 0, zIndex: 1000,
                 background: 'rgba(0,0,0,0.5)',
               }}
             />
@@ -65,7 +65,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
               style={{
                 position: 'fixed', top: 0, left: 0, bottom: 0,
-                width: 280, height: '100vh', zIndex: 601,
+                width: 280, height: '100vh', zIndex: 1001,
                 background: 'linear-gradient(180deg, #0f4a2a 0%, #0a2a15 100%)',
                 borderRight: '1px solid rgba(255,255,255,0.1)',
                 display: 'flex', flexDirection: 'column',

@@ -169,18 +169,23 @@ export default function App() {
       {/* Saved game banner */}
       <AnimatePresence>
         {savedGame && !pendingRejoin && (
+          <div style={{
+            position:'fixed', top:64, left:0, right:0,
+            zIndex:10, display:'flex', justifyContent:'center',
+            pointerEvents:'none',
+          }}>
           <motion.div
             initial={{ opacity:0, y:-20 }}
             animate={{ opacity:1, y:0 }}
             exit={{ opacity:0, y:-20 }}
             style={{
-              position:'absolute', top:64, left:'50%', transform:'translateX(-50%)',
-              zIndex:10, background:'rgba(76,175,80,0.15)',
+              background:'rgba(76,175,80,0.15)',
               border:'1px solid rgba(76,175,80,0.5)',
               backdropFilter:'blur(12px)',
               borderRadius:16, padding:'10px 16px',
               display:'flex', alignItems:'center', gap:10,
               whiteSpace:'nowrap',
+              pointerEvents:'auto',
             }}>
             <span style={{ fontSize:13, fontWeight:700, color:'#80ff80' }}>
               Saved game vs bots!
@@ -196,6 +201,7 @@ export default function App() {
               color:'rgba(255,255,255,0.6)', cursor:'pointer',
             }}>✕</button>
           </motion.div>
+          </div>
         )}
       </AnimatePresence>
 
