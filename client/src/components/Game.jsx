@@ -478,7 +478,7 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
           fromY: window.innerHeight - 120,
           toX: r.left + r.width / 2,
           toY: r.top + r.height / 2,
-          hidden: false,
+          hidden: true,
         });
         setTimeout(() => setFlyAnim(null), 400);
       }

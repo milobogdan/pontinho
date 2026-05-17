@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import T, { RULES_CONTENT } from '../translations';
 
@@ -41,7 +42,8 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
         ☰
       </button>
 
-      {/* Overlay */}
+      {/* Overlay — portal escapes the header's backdropFilter stacking context */}
+      {createPortal(
       <AnimatePresence>
         {isOpen && (
           <>
@@ -310,6 +312,7 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
           </>
         )}
       </AnimatePresence>
+      , document.body)}
     </>
   );
 }
