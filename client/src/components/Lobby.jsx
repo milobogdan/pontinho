@@ -62,12 +62,18 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
     socket.on('youAreHost', () => {
       setCurrentRoom(prev => prev ? { ...prev, isHost: true } : prev);
     });
+    socket.on('kicked', () => {
+      setCurrentRoom(null);
+      setScreen('landing');
+      setError(t.kickedMessage);
+    });
     return () => {
       socket.off('playerList');
       socket.off('gameStarted');
       socket.off('lobbyMessage');
       socket.off('playerLeft');
       socket.off('youAreHost');
+      socket.off('kicked');
     };
   }, []);
 
@@ -523,6 +529,16 @@ export default function Lobby({ onGameStart, lang = 'en' }) {
                         padding:0,
                       }}>
                       ✕
+                    </button>
+                  )}
+                  {!p.isBot && p.id !== currentRoom.playerId && currentRoom.isHost && (
+                    <button onClick={() => socket.emit('kickPlayer', { playerId: p.id }, () => {})}
+                      style={{
+                        background:'rgba(230,57,70,0.3)', border:'none', borderRadius:10,
+                        padding:'2px 7px', cursor:'pointer', color:'#ff8080',
+                        fontSize:10, fontWeight:700,
+                      }}>
+                      {t.kickPlayer}
                     </button>
                   )}
                 </div>

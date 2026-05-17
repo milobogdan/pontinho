@@ -2,6 +2,20 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import T, { RULES_CONTENT } from '../translations';
+import Card from './Card';
+
+const CARD_EXAMPLES = {
+  4: [
+    { rank: 'A', suit: 'spades' },
+    { rank: 'A', suit: 'hearts' },
+    { rank: 'A', suit: 'diamonds' },
+  ],
+  5: [
+    { rank: '5', suit: 'hearts' },
+    { isJoker: true },
+    { rank: '7', suit: 'hearts' },
+  ],
+};
 
 export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, onLeave, onSaveAndLeave, lang = 'en' }) {
   const t = T[lang];
@@ -9,8 +23,12 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
   const [isOpen, setIsOpen] = useState(false);
   const [panel, setPanel] = useState(null); // 'rules' | 'scores' | 'leave'
 
+  const explosionTier = p => p.eliminated ? 2 : p.hasExploded ? 1 : 0;
   const sortedPlayers = gameState?.players
-    ? [...gameState.players].sort((a, b) => a.totalScore - b.totalScore)
+    ? [...gameState.players].sort((a, b) => {
+        const tierDiff = explosionTier(a) - explosionTier(b);
+        return tierDiff !== 0 ? tierDiff : a.totalScore - b.totalScore;
+      })
     : [];
 
   const isBotOnlyGame = gameState?.players?.every(p => p.id === roomInfo?.playerId || p.isBot);
@@ -200,6 +218,11 @@ export default function GameMenu({ gameState, roomInfo, isMuted, onToggleMute, o
                         <div style={{ fontSize: 12, opacity: 0.8, lineHeight: 1.5 }}>
                           {rule.content}
                         </div>
+                        {CARD_EXAMPLES[i] && (
+                          <div style={{ display: 'flex', gap: 4, marginTop: 8 }}>
+                            {CARD_EXAMPLES[i].map((card, j) => <Card key={j} card={card} tiny />)}
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

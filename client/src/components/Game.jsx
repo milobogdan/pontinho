@@ -469,20 +469,6 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
   function msg(text) { setMessage(text); setTimeout(() => setMessage(''), 3000); }
 
   function emit(event, data = {}) {
-    if (event === 'discardCard') {
-      playSound('discard');
-      if (discardPileRef.current) {
-        const r = discardPileRef.current.getBoundingClientRect();
-        setFlyAnim({
-          fromX: window.innerWidth / 2,
-          fromY: window.innerHeight - 120,
-          toX: r.left + r.width / 2,
-          toY: r.top + r.height / 2,
-          hidden: true,
-        });
-        setTimeout(() => setFlyAnim(null), 400);
-      }
-    }
     socket.emit(event, data, (res) => {
       if (res?.error) {
         if (res.error === 'No active game') {
@@ -491,6 +477,19 @@ export default function Game({ roomInfo, onLeave, onSaveAndLeave, lang = 'en' })
         }
         playSound('error');
         msg(res.error);
+      } else if (event === 'discardCard') {
+        playSound('discard');
+        if (discardPileRef.current) {
+          const r = discardPileRef.current.getBoundingClientRect();
+          setFlyAnim({
+            fromX: window.innerWidth / 2,
+            fromY: window.innerHeight - 120,
+            toX: r.left + r.width / 2,
+            toY: r.top + r.height / 2,
+            hidden: true,
+          });
+          setTimeout(() => setFlyAnim(null), 400);
+        }
       } else if (event === 'drawFromPile' || event === 'drawFromDiscard' || event === 'firstDraw') {
         playSound('card');
       } else if (event === 'playMeld' || event === 'extendMeld') {

@@ -3,8 +3,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Lobby from './components/Lobby';
 import Game from './components/Game';
 import T, { RULES_CONTENT } from './translations';
+import Card from './components/Card';
 import socket from './socket';
 import './App.css';
+
+const CARD_EXAMPLES = {
+  4: [
+    { rank: 'A', suit: 'spades' },
+    { rank: 'A', suit: 'hearts' },
+    { rank: 'A', suit: 'diamonds' },
+  ],
+  5: [
+    { rank: '5', suit: 'hearts' },
+    { isJoker: true },
+    { rank: '7', suit: 'hearts' },
+  ],
+};
 
 const LANGUAGES = {
   pt: { code: 'pt', flag: '🇧🇷', label: 'PT' },
@@ -349,6 +363,11 @@ export default function App() {
                     <div style={{ fontSize:13, opacity:0.8, lineHeight:1.5 }}>
                       {rule.content}
                     </div>
+                    {CARD_EXAMPLES[i] && (
+                      <div style={{ display:'flex', gap:4, marginTop:8 }}>
+                        {CARD_EXAMPLES[i].map((card, j) => <Card key={j} card={card} tiny />)}
+                      </div>
+                    )}
                   </motion.div>
                 ))}
               </div>

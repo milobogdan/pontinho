@@ -252,6 +252,19 @@ io.on('connection', (socket) => {
     callback?.({ success: true });
   });
 
+  // ── KICK PLAYER ────────────────────────────────────────────────
+  socket.on('kickPlayer', ({ playerId }, callback) => {
+    const room = rooms[socket.data.roomCode];
+    if (!room) return callback?.({ error: 'Room not found' });
+    if (room.players[0]?.id !== socket.data.playerId) return callback?.({ error: 'Not host' });
+    const target = room.players.find(p => p.id === playerId);
+    if (!target) return callback?.({ error: 'Player not found' });
+    room.players = room.players.filter(p => p.id !== playerId);
+    io.to(target.socketId).emit('kicked');
+    io.to(room.code).emit('playerList', getPlayerListData(room));
+    callback?.({ success: true });
+  });
+
   // ── TOGGLE DEBUG MODE ──────────────────────────────────────────
   socket.on('setDebugMode', ({ enabled }) => {
     const room = rooms[socket.data.roomCode];

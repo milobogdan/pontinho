@@ -135,6 +135,8 @@ const T = {
     replacedByBot: "You'll be replaced by a bot and won't be able to rejoin this game.",
     yesLeave: 'Yes, Leave',
     cancel: 'Cancel',
+    kickPlayer: 'Kick',
+    kickedMessage: 'You were removed from the room by the host.',
   },
 
   ro: {
@@ -237,6 +239,8 @@ const T = {
     replacedByBot: 'Vei fi înlocuit de un bot și nu vei putea rejoina jocul.',
     yesLeave: 'Da, Părăsește',
     cancel: 'Anulează',
+    kickPlayer: 'Elimină',
+    kickedMessage: 'Ai fost scos din cameră de gazdă.',
   },
 
   pt: {
@@ -339,6 +343,8 @@ const T = {
     replacedByBot: 'Você será substituído por um bot e não poderá rejoinar o jogo.',
     yesLeave: 'Sim, Sair',
     cancel: 'Cancelar',
+    kickPlayer: 'Expulsar',
+    kickedMessage: 'Você foi removido da sala pelo host.',
   },
 };
 
