@@ -364,7 +364,7 @@ export default function App() {
                       {rule.content}
                     </div>
                     {CARD_EXAMPLES[i] && (
-                      <div style={{ display:'flex', gap:4, marginTop:8 }}>
+                      <div style={{ display:'flex', justifyContent:'center', gap:6, marginTop:10 }}>
                         {CARD_EXAMPLES[i].map((card, j) => <Card key={j} card={card} tiny />)}
                       </div>
                     )}
