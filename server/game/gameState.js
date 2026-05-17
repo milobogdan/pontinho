@@ -209,7 +209,7 @@ export function drawFromDiscard(game, playerId) {
 
   // Allow picking for a set only if it leads to a complete winning hand
   const handWithCard = [...player.hand, card];
-  const wouldWin = findWinningMelds(handWithCard) !== null
+  const wouldWin = findWinningMelds(handWithCard, game.melds) !== null
     || isValidWinningRun(handWithCard)
     || canWinByExtending(handWithCard, game.melds);
 

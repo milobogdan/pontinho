@@ -1,4 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fredoka+One&subset=latin,latin-ext&display=swap');
+
+/* Supplement Fredoka One for Latin Extended characters (Romanian ă â î ș ț, etc.).
+   When Fredoka One's Google-served file lacks a glyph in this range (common on
+   English-locale iOS), the browser uses Helvetica Neue / Arial instead of the
+   generic 'cursive' fallback, which has completely different metrics. */
+@font-face {
+  font-family: 'Fredoka One';
+  src: local('Helvetica Neue'), local('Arial Unicode MS'), local('Arial');
+  unicode-range: U+00C0-00D6, U+00D8-00F6, U+00F8-024F, U+0218-021B;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -22,7 +32,7 @@ body {
   color: #fff;
 }
 
-h1, h2, h3 { font-family: 'Fredoka One', cursive; letter-spacing: 0.5px; }
+h1, h2, h3 { font-family: 'Fredoka One', 'Nunito', system-ui, sans-serif; letter-spacing: 0.5px; }
 
 button {
   font-family: 'Nunito', sans-serif;

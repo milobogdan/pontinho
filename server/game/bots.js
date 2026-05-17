@@ -96,6 +96,8 @@ export function canWinByExtending(hand, tableMemds) {
   let changed = true;
   while (changed && simHand.length > 0) {
     changed = false;
+
+    // Regular extension: slot hand card into a table meld
     for (const meld of simMemds) {
       for (let i = simHand.length - 1; i >= 0; i--) {
         const card = simHand[i];
@@ -110,6 +112,27 @@ export function canWinByExtending(hand, tableMemds) {
       }
       if (changed) break;
     }
+
+    // Joker steal: replace a Joker in a table run with a hand card; reclaim the Joker
+    if (!changed) {
+      for (const meld of simMemds) {
+        if (meld.type !== 'run' || !meld.cards.some(c => c.isJoker)) continue;
+        for (let i = simHand.length - 1; i >= 0; i--) {
+          const card = simHand[i];
+          if (card.isJoker) continue;
+          if (canReplaceJoker(meld.cards, card)) {
+            const jokerIdx = meld.cards.findIndex(c => c.isJoker);
+            const stolenJoker = meld.cards[jokerIdx];
+            meld.cards[jokerIdx] = card;
+            simHand.splice(i, 1);
+            simHand.push(stolenJoker); // Joker is now available to slot elsewhere
+            changed = true;
+            break;
+          }
+        }
+        if (changed) break;
+      }
+    }
   }
 
   if (simHand.length === 0) return true;
@@ -117,8 +140,9 @@ export function canWinByExtending(hand, tableMemds) {
   return findAllMelds(simHand, true) !== null;
 }
 
-// Exported — used by checkBotStop in index.js (winning rules: Joker at start/end allowed)
-export function findWinningMelds(hand) {
+// ── WINNING MELDS ─────────────────────────────────────────────────────────────
+
+function findWinningMeldsForHand(hand) {
   const all = findAllMelds(hand, true);
   if (all !== null) return { melds: all, discard: null };
 
@@ -130,6 +154,28 @@ export function findWinningMelds(hand) {
     // Without this, a 2-card hand [A, B] would falsely return { melds:[], discard:A }
     // because findAllMelds([B]) = [] (1-card shortcut) even though B is never melded.
     if (melds !== null && melds.length > 0) return { melds, discard: hand[i] };
+  }
+
+  return null;
+}
+
+// Exported — used by checkBotStop in index.js (winning rules: Joker at start/end allowed)
+// tableMelds is optional: when provided, also tries virtual Joker steals from table runs
+export function findWinningMelds(hand, tableMelds = []) {
+  const direct = findWinningMeldsForHand(hand);
+  if (direct) return direct;
+
+  // Try winning via a Joker stolen from a table run
+  const virtualJoker = { isJoker: true, rank: 'JOKER', value: 50, id: 'virtual' };
+  for (const meld of tableMelds) {
+    if (meld.type !== 'run' || !meld.cards.some(c => c.isJoker)) continue;
+    for (const handCard of hand) {
+      if (handCard.isJoker) continue;
+      if (!canReplaceJoker(meld.cards, handCard)) continue;
+      const virtualHand = [...hand.filter(c => c.id !== handCard.id), virtualJoker];
+      const result = findWinningMeldsForHand(virtualHand);
+      if (result) return result;
+    }
   }
 
   return null;
