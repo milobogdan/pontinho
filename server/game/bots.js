@@ -90,6 +90,23 @@ function isRunContiguousWithTable(meld, tableMelds) {
 // Used to detect wins where the bot only needs to extend table runs (e.g. slot Jokers)
 export function canWinByExtending(hand, tableMemds) {
   if (!tableMemds || !tableMemds.length) return false;
+
+  // Non-greedy steal check: for each possible Joker steal, test if the resulting
+  // virtual hand (replacement card → table, Joker ← hand) can be fully melded.
+  // This must run BEFORE the greedy loop, which would otherwise consume the stolen
+  // Joker into another table extension and prevent it from forming a new meld.
+  const virtualJoker = { isJoker: true, rank: 'JOKER', value: 50, id: 'virtual' };
+  for (const meld of tableMemds) {
+    if (meld.type !== 'run' || !meld.cards.some(c => c.isJoker)) continue;
+    for (const handCard of hand) {
+      if (handCard.isJoker) continue;
+      if (!canReplaceJoker(meld.cards, handCard)) continue;
+      const virtualHand = [...hand.filter(c => c.id !== handCard.id), virtualJoker];
+      if (findAllMelds(virtualHand, true) !== null) return true;
+    }
+  }
+
+  // Greedy extension: slot hand cards into existing table melds one by one
   const simMemds = tableMemds.map(m => ({ ...m, cards: [...m.cards] }));
   const simHand = [...hand];
 
@@ -113,7 +130,7 @@ export function canWinByExtending(hand, tableMemds) {
       if (changed) break;
     }
 
-    // Joker steal: replace a Joker in a table run with a hand card; reclaim the Joker
+    // Joker steal in greedy loop: steal → then try extending another table run in next iteration
     if (!changed) {
       for (const meld of simMemds) {
         if (meld.type !== 'run' || !meld.cards.some(c => c.isJoker)) continue;
@@ -125,7 +142,7 @@ export function canWinByExtending(hand, tableMemds) {
             const stolenJoker = meld.cards[jokerIdx];
             meld.cards[jokerIdx] = card;
             simHand.splice(i, 1);
-            simHand.push(stolenJoker); // Joker is now available to slot elsewhere
+            simHand.push(stolenJoker);
             changed = true;
             break;
           }
