@@ -177,6 +177,7 @@ export default function DebugPanel({ gameState, roomInfo }) {
   const [selectedCards, setSelectedCards] = useState([]);
   const [discardCard, setDiscardCard]     = useState(null);
   const [msg, setMsg]             = useState('');
+  const [botCardsVisible, setBotCardsVisible] = useState(false);
 
   const deck = fullDeck();
 
@@ -239,6 +240,13 @@ export default function DebugPanel({ gameState, roomInfo }) {
       if (res?.error) showMsg(`❌ ${res.error}`);
       else showMsg('✅ Skipped to play phase!');
     });
+  }
+
+  function toggleBotCards() {
+    const next = !botCardsVisible;
+    setBotCardsVisible(next);
+    socket.emit('setDebugMode', { enabled: next });
+    showMsg(next ? '👁 Bot cards revealed!' : '🙈 Bot cards hidden');
   }
 
   return (
@@ -478,6 +486,14 @@ export default function DebugPanel({ gameState, roomInfo }) {
                     fontWeight:700, cursor:'pointer', fontSize:13, marginBottom:8,
                   }}>
                     ⏭ Skip to Play Phase
+                  </button>
+                  <button onClick={toggleBotCards} style={{
+                    width:'100%', padding:'10px', borderRadius:8, border:'none',
+                    background: botCardsVisible ? 'rgba(230,57,70,0.2)' : 'rgba(76,175,80,0.2)',
+                    color: botCardsVisible ? '#ff8080' : '#80ff80',
+                    fontWeight:700, cursor:'pointer', fontSize:13,
+                  }}>
+                    {botCardsVisible ? '🙈 Hide Bot Cards' : '👁 Reveal Bot Cards'}
                   </button>
                 </div>
               </div>

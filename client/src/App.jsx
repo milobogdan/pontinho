@@ -174,7 +174,7 @@ export default function App() {
             animate={{ opacity:1, y:0 }}
             exit={{ opacity:0, y:-20 }}
             style={{
-              position:'absolute', top:64, left:16,
+              position:'absolute', top:64, left:'50%', transform:'translateX(-50%)',
               zIndex:10, background:'rgba(76,175,80,0.15)',
               border:'1px solid rgba(76,175,80,0.5)',
               backdropFilter:'blur(12px)',

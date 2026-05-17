@@ -1,4 +1,4 @@
-import { findWinningMelds } from './bots.js';
+import { findWinningMelds, canWinByExtending } from './bots.js';
 import { createDeck, deal } from './deck.js';
 import { isValidMeld, isValidSet, isValidRun, isValidExtension,
          calculateHandScore, canUseDiscardCard, canReplaceJoker,
@@ -71,6 +71,7 @@ export function createGame(playerInfos) {
     melds: [],
     pickedFromDiscard: false,
     pickedDiscardCard: null,
+    usedWinningRun: false,
     stopCalledBy: null,
     lastDiscardedBy: null,
   };
@@ -131,6 +132,7 @@ export function startRound(game) {
   game.status = 'playing';
   game.pickedFromDiscard = false;
   game.pickedDiscardCard = null;
+  game.usedWinningRun = false;
   game.stopCalledBy = null;
   game.turnPhase = 'firstDraw';
   return game;
@@ -207,7 +209,9 @@ export function drawFromDiscard(game, playerId) {
 
   // Allow picking for a set only if it leads to a complete winning hand
   const handWithCard = [...player.hand, card];
-  const wouldWin = findWinningMelds(handWithCard) !== null || isValidWinningRun(handWithCard);
+  const wouldWin = findWinningMelds(handWithCard) !== null
+    || isValidWinningRun(handWithCard)
+    || canWinByExtending(handWithCard, game.melds);
 
   if (!canUseDiscardCard(card, player.hand, game.melds) && !wouldWin) {
     return { error: `You can only pick from discard if you can use ${card.rank} in a run` };
@@ -230,7 +234,9 @@ export function playMeld(game, playerId, cardIds) {
   if (cards.length !== cardIds.length) return { error: 'Some cards not found in your hand' };
 
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
+  const isWinningMove = remainingAfter.length <= 1
+    || canGoOut(remainingAfter)
+    || canWinByExtending(remainingAfter, game.melds);
 
   // Discard card must be used in a run — exception: a set is allowed if it's a winning move
   if (game.pickedFromDiscard && !game.stopCalledBy) {
@@ -247,6 +253,11 @@ export function playMeld(game, playerId, cardIds) {
 
   const type = isValidSet(cards) ? 'set' : 'run';
   player.hand = player.hand.filter(c => !cardIds.includes(c.id));
+
+  // Track if Joker-at-edge (winning-run-only) meld was played — player must then go out
+  if (!isStopPhase && isValidWinningRun(cards) && !isValidRun(cards)) {
+    game.usedWinningRun = true;
+  }
 
   // Mark discard card as used if it was part of this meld
   if (game.pickedFromDiscard && cards.find(c => c.id === game.pickedDiscardCard?.id)) {
@@ -273,7 +284,9 @@ export function extendMeld(game, playerId, meldId, cardIds) {
 
   // Check if this would empty the hand (winning move) — allow joker at end
   const remainingAfter = player.hand.filter(c => !cardIds.includes(c.id));
-  const isWinningMove = remainingAfter.length <= 1 || canGoOut(remainingAfter);
+  const isWinningMove = remainingAfter.length <= 1
+    || canGoOut(remainingAfter)
+    || canWinByExtending(remainingAfter, game.melds);
 
   const combined = [...meld.cards, ...cards];
   const valid = (isWinningMove || game.stopCalledBy)
@@ -284,6 +297,11 @@ export function extendMeld(game, playerId, meldId, cardIds) {
 
   player.hand = player.hand.filter(c => !cardIds.includes(c.id));
   meld.cards = [...meld.cards, ...cards];
+
+  // Track if Joker-at-edge (winning-run-only) extension was played — player must then go out
+  if (!game.stopCalledBy && isValidWinningRun(combined) && !isValidExtension(meld.cards.slice(0, -cards.length), cards)) {
+    game.usedWinningRun = true;
+  }
 
   if (game.pickedFromDiscard && cards.find(c => c.id === game.pickedDiscardCard?.id)) {
     game.pickedFromDiscard = false;
@@ -389,12 +407,17 @@ export function discardCard(game, playerId, cardId) {
   if (game.turnPhase !== 'play') return { error: 'Not in play phase' };
   if (getCurrentPlayer(game).id !== playerId) return { error: 'Not your turn' };
 
+  const player = getCurrentPlayer(game);
+
   // Must use the discard card before ending turn
   if (game.pickedFromDiscard) {
     return { error: 'You must use the card you picked from the discard pile in a run first' };
   }
 
-  const player = getCurrentPlayer(game);
+  // After playing a Joker-at-edge (winning-only) meld, player must go out — no discarding with cards left
+  if (game.usedWinningRun && player.hand.length > 1) {
+    return { error: 'You must go out after playing a Joker at the edge of a run' };
+  }
   const cardIndex = player.hand.findIndex(c => c.id === cardId);
   if (cardIndex === -1) return { error: 'Card not found in your hand' };
 
@@ -510,6 +533,7 @@ export function nextTurn(game) {
   game.turnPhase = 'draw';
   game.pickedFromDiscard = false;
   game.pickedDiscardCard = null;
+  game.usedWinningRun = false;
 }
 
 // ─── PLAYER VIEW (hides other hands, always hides draw pile) ─────────────────

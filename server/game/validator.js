@@ -56,7 +56,7 @@ function isValidSet(cards) {
   // At least 3 different suits, max 2 of any one suit (same rule as set extension)
   const suitCounts = {};
   for (const c of cards) suitCounts[c.suit] = (suitCounts[c.suit] || 0) + 1;
-  return Object.keys(suitCounts).length >= 3
+  return Object.keys(suitCounts).length === 3
       && Object.values(suitCounts).every(n => n <= 2);
 }
 

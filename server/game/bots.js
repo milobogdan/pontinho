@@ -88,7 +88,7 @@ function isRunContiguousWithTable(meld, tableMelds) {
 
 // Check if all hand cards can be placed into existing table melds (or win with remainder)
 // Used to detect wins where the bot only needs to extend table runs (e.g. slot Jokers)
-function canWinByExtending(hand, tableMemds) {
+export function canWinByExtending(hand, tableMemds) {
   if (!tableMemds || !tableMemds.length) return false;
   const simMemds = tableMemds.map(m => ({ ...m, cards: [...m.cards] }));
   const simHand = [...hand];
@@ -262,20 +262,6 @@ function shouldDrawDiscard(topDiscard, hand, melds, difficulty, threat) {
   for (const m of melds) {
     if (isValidExtension(m.cards, [topDiscard])) return true;
     if (m.type === 'run' && canReplaceJoker(m.cards, topDiscard)) return true;
-  }
-
-  if (difficulty === 'hard') {
-    // Build toward partial run: adjacent same-suit card in hand
-    const sameSuit = hand.filter(c => !c.isJoker && c.suit === topDiscard.suit);
-    for (const c of sameSuit) {
-      if (Math.abs(c.value - topDiscard.value) === 1) return true;
-    }
-    // Under high/critical threat, accept any 2-gap partial run
-    if (threat === 'high' || threat === 'critical') {
-      for (const c of sameSuit) {
-        if (Math.abs(c.value - topDiscard.value) === 2) return true;
-      }
-    }
   }
 
   return false;
